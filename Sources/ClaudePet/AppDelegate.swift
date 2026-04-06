@@ -67,6 +67,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var randomSpeechTimer: Timer?
     var nextColorIndex: Int = 0
     let timeTracker = TimeTracker()
+    let updateChecker = UpdateChecker()
     var showTimerEnabled: Bool = true
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -83,7 +84,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         HookSetup.checkAndPrompt()
 
         // 자동 업데이트 체크
-        UpdateChecker().checkOnLaunch()
+        updateChecker.onResult = { [weak self] msg in
+            if let session = self?.sessions.values.first {
+                self?.showSpeech(msg, for: session)
+            }
+        }
+        updateChecker.checkOnLaunch()
 
         startMonitoring()
         scheduleRandomSpeech()
@@ -156,6 +162,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(quitItem)
 
         statusItem.menu = menu
+    }
+
+    @objc private func runUpdate() {
+        if let session = sessions.values.first {
+            showSpeech("업데이트 시작! 터미널을 확인해줘!", for: session)
+        }
+        updateChecker.updateAvailable = false
+        updateChecker.runUpdate()
     }
 
     @objc private func toggleTimer() {
@@ -488,6 +502,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let skinItem = NSMenuItem(title: "스킨", action: nil, keyEquivalent: "")
         skinItem.submenu = skinMenu
         menu.addItem(skinItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        if updateChecker.updateAvailable, let ver = updateChecker.latestVersion {
+            let updateItem = NSMenuItem(title: "🎉 v\(ver) 업데이트!", action: #selector(runUpdate), keyEquivalent: "")
+            updateItem.target = self
+            menu.addItem(updateItem)
+        }
 
         menu.addItem(NSMenuItem.separator())
 

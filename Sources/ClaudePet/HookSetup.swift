@@ -22,6 +22,8 @@ class HookSetup {
     }
 
     private static func showSetupAlert() {
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert()
         alert.messageText = "Claude Code 연동"
         alert.informativeText = "Claude Code와 연동하면 작업 상태를 실시간으로 알려줘요!\n\n- 작업 시작/완료 알림\n- 권한 요청 알림\n- 세션별 상태 표시\n\n연동하시겠습니까?"
@@ -30,6 +32,7 @@ class HookSetup {
         alert.addButton(withTitle: "나중에")
 
         let response = alert.runModal()
+        NSApp.setActivationPolicy(.accessory)
         if response == .alertFirstButtonReturn {
             let success = installHooks()
             if success {

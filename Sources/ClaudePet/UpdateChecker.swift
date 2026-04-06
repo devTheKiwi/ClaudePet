@@ -1,31 +1,54 @@
 import Cocoa
 
 class UpdateChecker {
-    private let currentVersion = "2.0.0"
+    let currentVersion = "2.0.0"
     private let repoAPI = "https://api.github.com/repos/devTheKiwi/ClaudePet/releases/latest"
-    private let installCommand = "curl -sL https://raw.githubusercontent.com/devTheKiwi/ClaudePet/main/remote-install.sh | bash"
+
+    var latestVersion: String?
+    var updateAvailable: Bool = false
+    var onResult: ((String) -> Void)?
 
     func checkOnLaunch() {
-        // 앱 시작 3초 후 체크
-        DispatchQueue.global().asyncAfter(deadline: .now() + 3) { [weak self] in
+        DispatchQueue.global().asyncAfter(deadline: .now() + 5) { [weak self] in
+            self?.check()
+        }
+    }
+
+    func checkNow() {
+        DispatchQueue.global().async { [weak self] in
             self?.check()
         }
     }
 
     private func check() {
-        guard let url = URL(string: repoAPI) else { return }
+        guard let url = URL(string: repoAPI) else {
+            DispatchQueue.main.async { self.onResult?("업데이트 확인 실패") }
+            return
+        }
 
         let task = URLSession.shared.dataTask(with: url) { [weak self] data, _, error in
-            guard let self = self,
-                  error == nil,
+            guard let self = self else { return }
+
+            guard error == nil,
                   let data = data,
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let latestTag = json["tag_name"] as? String else { return }
+                  let latestTag = json["tag_name"] as? String else {
+                DispatchQueue.main.async { self.onResult?("업데이트 확인 실패") }
+                return
+            }
 
             let latest = latestTag.replacingOccurrences(of: "v", with: "")
+            self.latestVersion = latest
+
             if self.isNewer(latest: latest, current: self.currentVersion) {
+                self.updateAvailable = true
                 DispatchQueue.main.async {
-                    self.showUpdateAlert(version: latest)
+                    self.onResult?("새 버전 v\(latest) 나왔어! 우클릭→업데이트!")
+                }
+            } else {
+                self.updateAvailable = false
+                DispatchQueue.main.async {
+                    self.onResult?("최신 버전이에요! (v\(self.currentVersion))")
                 }
             }
         }
@@ -44,31 +67,20 @@ class UpdateChecker {
         return false
     }
 
-    private func showUpdateAlert(version: String) {
-        let alert = NSAlert()
-        alert.messageText = "새 버전이 나왔어요! 🎉"
-        alert.informativeText = "ClaudePet v\(version) 이 출시되었습니다.\n\n터미널에서 아래 명령어로 업데이트할 수 있어요."
-        alert.addButton(withTitle: "터미널에서 업데이트")
-        alert.addButton(withTitle: "나중에")
-        alert.alertStyle = .informational
+    func runUpdate() {
+        let installCommand = "curl -sL https://raw.githubusercontent.com/devTheKiwi/ClaudePet/main/remote-install.sh | bash"
 
-        let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
-            runUpdate()
-        }
-    }
-
-    private func runUpdate() {
-        // Terminal.app에서 업데이트 명령어 실행
-        let script = """
-        tell application "Terminal"
-            activate
-            do script "\(installCommand)"
-        end tell
-        """
-        if let appleScript = NSAppleScript(source: script) {
-            var error: NSDictionary?
-            appleScript.executeAndReturnError(&error)
+        // .command 임시 파일로 터미널 실행 (권한 문제 없음)
+        let tmpFile = "/tmp/claudepet-update.command"
+        let script = "#!/bin/bash\n\(installCommand)\nrm -f \(tmpFile)\n"
+        do {
+            try script.write(toFile: tmpFile, atomically: true, encoding: .utf8)
+            try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: tmpFile)
+            NSWorkspace.shared.open(URL(fileURLWithPath: tmpFile))
+        } catch {
+            // 실패 시 클립보드에 복사
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(installCommand, forType: .string)
         }
     }
 }
