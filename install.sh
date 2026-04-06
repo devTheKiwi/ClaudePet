@@ -29,17 +29,12 @@ echo -e "${NC}"
 echo -e "${BOLD}[1/5] 환경 확인...${NC}"
 
 if ! command -v swift &> /dev/null; then
-    echo -e "${YELLOW}Swift가 없습니다. Xcode Command Line Tools를 설치합니다...${NC}"
-    echo "  설치 팝업이 뜨면 '설치' 버튼을 눌러주세요!"
+    echo -e "${RED}Swift가 설치되어 있지 않습니다.${NC}"
+    echo "  Xcode Command Line Tools를 먼저 설치해주세요:"
+    echo "  xcode-select --install"
     echo ""
-    xcode-select --install 2>/dev/null
-
-    # 설치 완료 대기
-    echo -e "${YELLOW}  설치가 완료될 때까지 기다리는 중...${NC}"
-    until command -v swift &> /dev/null; do
-        sleep 5
-    done
-    echo -e "${GREEN}  Xcode Command Line Tools 설치 완료!${NC}"
+    echo "  설치 후 다시 ./install.sh 를 실행해주세요."
+    exit 1
 fi
 
 if ! command -v claude &> /dev/null; then

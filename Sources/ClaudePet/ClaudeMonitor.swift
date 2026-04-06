@@ -20,7 +20,7 @@ struct SessionInfo: Equatable {
 }
 
 class ClaudeMonitor {
-    private let staleTimeout: Int = 120 // 2분 이상 업데이트 없으면 제거
+    private let staleTimeout: Int = 7200 // 2시간 이상 업데이트 없으면 정리
 
     func checkSessions() -> [SessionInfo] {
         var sessions: [SessionInfo] = []

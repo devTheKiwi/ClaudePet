@@ -22,8 +22,42 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupStatusBar()
         claudeMonitor = ClaudeMonitor()
+
+        // 기본 Pet 항상 생성 (세션 없어도 살아있음)
+        spawnDefaultPet()
+
+        // 첫 실행 시 Hook 설정 팝업
+        HookSetup.checkAndPrompt()
+
         startMonitoring()
         scheduleRandomSpeech()
+    }
+
+    private func spawnDefaultPet() {
+        let color = PetColor.palette[0]
+        let screen = NSScreen.main!
+        let startX = screen.visibleFrame.midX - 32
+
+        let petWindow = PetWindow(sessionId: "default", color: color, startX: startX)
+        let speechBubble = SpeechBubbleWindow()
+        petWindow.orderFront(nil)
+
+        setupClickHandlers(for: "default", petWindow: petWindow)
+
+        let session = PetSession(
+            petWindow: petWindow,
+            speechBubble: speechBubble,
+            colorIndex: 0,
+            lastStatus: .notRunning,
+            cwd: ""
+        )
+        sessions["default"] = session
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            if let s = self?.sessions["default"] {
+                self?.showSpeech("안녕! 나는 Claude Pet이야!", for: s)
+            }
+        }
     }
 
     // MARK: - Status Bar
@@ -83,16 +117,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let liveInfos = claudeMonitor.checkSessions()
         let liveIds = Set(liveInfos.map { $0.sessionId })
 
-        // 사라진 세션 제거
+        // 사라진 세션 제거 (단, "default"는 절대 제거하지 않음)
         let removedIds = Set(sessions.keys).subtracting(liveIds)
         for id in removedIds {
+            if id == "default" { continue } // 기본 Pet은 유지
+
             if let session = sessions[id] {
-                showSpeech("바이바이~", for: session)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                    session.petWindow.orderOut(nil)
-                    session.speechBubble.orderOut(nil)
+                // 마지막 하나 남으면 제거하지 않고 default로 전환
+                if sessions.count <= 1 {
+                    sessions[id]?.lastStatus = .notRunning
+                    session.petWindow.petView.claudeStatus = .notRunning
+                    continue
                 }
+
+                showSpeech("바이바이~", for: session)
+                let petWin = session.petWindow
+                let bubbleWin = session.speechBubble
                 sessions.removeValue(forKey: id)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    petWin.orderOut(nil)
+                    bubbleWin.orderOut(nil)
+                }
             }
         }
 
@@ -116,12 +161,45 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     existing.petWindow.petView.setState(.jumping)
                 }
             } else {
-                // 새 세션 → 새 Pet 스폰!
-                spawnPet(for: info)
+                // "default" Pet이 세션 없이 살아있으면 → 첫 세션 연결
+                if let defaultSession = sessions["default"], sessions.count == 1 {
+                    // default Pet의 상태를 새 세션으로 업데이트
+                    sessions.removeValue(forKey: "default")
+                    sessions[info.sessionId] = defaultSession
+
+                    setupClickHandlers(for: info.sessionId, petWindow: defaultSession.petWindow)
+
+                    sessions[info.sessionId]?.lastStatus = info.status
+                    sessions[info.sessionId]?.cwd = info.cwd
+                    defaultSession.petWindow.petView.claudeStatus = info.status
+
+                    let dir = (info.cwd as NSString).lastPathComponent
+                    showSpeech("\(dir.isEmpty ? "세션" : dir) 연결됨!", for: defaultSession)
+                } else {
+                    // 추가 세션 → 새 Pet 스폰
+                    spawnPet(for: info)
+                }
             }
         }
 
         rebuildStatusMenu()
+    }
+
+    // MARK: - Click Handler Setup
+
+    private func setupClickHandlers(for sessionId: String, petWindow: PetWindow) {
+        petWindow.petView.onClicked = { [weak self] in
+            guard let session = self?.sessions[sessionId] else { return }
+            self?.handlePetClicked(session: session)
+        }
+        petWindow.petView.onDoubleClicked = { [weak self] in
+            guard let session = self?.sessions[sessionId] else { return }
+            self?.handlePetDoubleClicked(session: session)
+        }
+        petWindow.petView.onRightClicked = { [weak self] event in
+            guard let session = self?.sessions[sessionId] else { return }
+            self?.handlePetRightClicked(event, session: session)
+        }
     }
 
     // MARK: - Spawn / Remove
@@ -135,21 +213,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let speechBubble = SpeechBubbleWindow()
 
         petWindow.orderFront(nil)
-
-        // 클릭 이벤트 연결
-        petWindow.petView.onClicked = { [weak self] in
-            guard let session = self?.sessions[info.sessionId] else { return }
-            self?.handlePetClicked(session: session)
-        }
-        petWindow.petView.onDoubleClicked = { [weak self] in
-            guard let session = self?.sessions[info.sessionId] else { return }
-            self?.handlePetDoubleClicked(session: session)
-        }
-        petWindow.petView.onRightClicked = { [weak self] event in
-            guard let session = self?.sessions[info.sessionId] else { return }
-            self?.handlePetRightClicked(event, session: session)
-        }
-
+        setupClickHandlers(for: info.sessionId, petWindow: petWindow)
         petWindow.petView.claudeStatus = info.status
 
         let session = PetSession(
