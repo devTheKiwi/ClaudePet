@@ -21,25 +21,18 @@ echo -e "${NC}"
 # ---- 1. Prerequisites ----
 echo -e "${BOLD}[1/4] 환경 확인...${NC}"
 
-if ! command -v swift &> /dev/null; then
-    echo -e "${RED}Swift가 설치되어 있지 않습니다.${NC}"
-    echo "  아래 명령어로 Xcode Command Line Tools를 먼저 설치해주세요:"
+if ! command -v swift &> /dev/null || ! command -v git &> /dev/null; then
+    echo -e "${YELLOW}  Xcode Command Line Tools 설치 중...${NC}"
+    echo "  설치 팝업이 뜨면 '설치' 버튼을 눌러주세요!"
+    xcode-select --install 2>/dev/null
     echo ""
-    echo "    xcode-select --install"
-    echo ""
-    echo "  설치 후 이 명령어를 다시 실행해주세요."
-    rm -rf "$TMP_DIR"
-    exit 1
+    echo -e "${YELLOW}  설치가 완료될 때까지 기다리는 중...${NC}"
+    until command -v swift &> /dev/null && command -v git &> /dev/null; do
+        sleep 5
+    done
+    echo -e "${GREEN}  Xcode Command Line Tools 설치 완료!${NC}"
 fi
-echo -e "${GREEN}  Swift OK${NC}"
-
-if ! command -v git &> /dev/null; then
-    echo -e "${RED}git이 설치되어 있지 않습니다.${NC}"
-    echo "  xcode-select --install 로 설치해주세요."
-    rm -rf "$TMP_DIR"
-    exit 1
-fi
-echo -e "${GREEN}  Git OK${NC}"
+echo -e "${GREEN}  Swift & Git OK${NC}"
 
 # ---- 2. Clone & Build ----
 echo -e "${BOLD}[2/4] 다운로드 및 빌드 중...${NC}"
