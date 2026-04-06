@@ -54,6 +54,14 @@ print("  settings.json에서 hook 제거")
 PYEOF
 fi
 
+# LaunchAgent 제거
+LAUNCH_AGENT="$HOME/Library/LaunchAgents/com.claudepet.app.plist"
+if [ -f "$LAUNCH_AGENT" ]; then
+    launchctl unload "$LAUNCH_AGENT" 2>/dev/null
+    rm -f "$LAUNCH_AGENT"
+    echo "  자동 시작 해제"
+fi
+
 # 상태 파일 정리
 rm -f /tmp/claudepet-*.json 2>/dev/null && echo "  상태 파일 정리" || true
 

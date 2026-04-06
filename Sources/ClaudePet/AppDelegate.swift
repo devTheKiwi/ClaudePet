@@ -8,6 +8,54 @@ struct PetSession {
     let colorIndex: Int
     var lastStatus: ClaudeStatus
     var cwd: String
+    var sessionStart: Date = Date()
+    var workingSeconds: Int = 0
+    var lastTool: String = ""
+}
+
+// MARK: - Time Tracker
+
+class TimeTracker {
+    private let key = "claudepet_today_minutes"
+    private let dateKey = "claudepet_today_date"
+
+    func todayTotalMinutes() -> Int {
+        let saved = UserDefaults.standard.string(forKey: dateKey) ?? ""
+        let today = dateString()
+        if saved != today {
+            // 날짜 바뀌면 리셋
+            UserDefaults.standard.set(0, forKey: key)
+            UserDefaults.standard.set(today, forKey: dateKey)
+            return 0
+        }
+        return UserDefaults.standard.integer(forKey: key)
+    }
+
+    func addMinute() {
+        let today = dateString()
+        let saved = UserDefaults.standard.string(forKey: dateKey) ?? ""
+        if saved != today {
+            UserDefaults.standard.set(0, forKey: key)
+            UserDefaults.standard.set(today, forKey: dateKey)
+        }
+        let current = UserDefaults.standard.integer(forKey: key)
+        UserDefaults.standard.set(current + 1, forKey: key)
+    }
+
+    private func dateString() -> String {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM-dd"
+        return fmt.string(from: Date())
+    }
+
+    func formatMinutes(_ mins: Int) -> String {
+        if mins < 60 {
+            return "\(mins)분"
+        }
+        let h = mins / 60
+        let m = mins % 60
+        return m > 0 ? "\(h)시간 \(m)분" : "\(h)시간"
+    }
 }
 
 // MARK: - App Delegate
@@ -18,6 +66,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var statusItem: NSStatusItem!
     var randomSpeechTimer: Timer?
     var nextColorIndex: Int = 0
+    let timeTracker = TimeTracker()
+    var showTimerEnabled: Bool = true
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupStatusBar()
@@ -26,11 +76,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 기본 Pet 항상 생성 (세션 없어도 살아있음)
         spawnDefaultPet()
 
+        // 저장된 타이머 표시 설정 불러오기
+        showTimerEnabled = UserDefaults.standard.object(forKey: "claudepet_show_timer") as? Bool ?? true
+
         // 첫 실행 시 Hook 설정 팝업
         HookSetup.checkAndPrompt()
 
+        // 자동 업데이트 체크
+        UpdateChecker().checkOnLaunch()
+
         startMonitoring()
         scheduleRandomSpeech()
+        startTimeTracking()
     }
 
     private func spawnDefaultPet() {
@@ -101,8 +158,85 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem.menu = menu
     }
 
+    @objc private func toggleTimer() {
+        showTimerEnabled = !showTimerEnabled
+        UserDefaults.standard.set(showTimerEnabled, forKey: "claudepet_show_timer")
+        for (_, session) in sessions {
+            session.petWindow.petView.showTimer = showTimerEnabled
+        }
+    }
+
+    @objc private func changeSkin(_ sender: NSMenuItem) {
+        guard let rawValue = sender.representedObject as? String,
+              let skinType = PetSkinType(rawValue: rawValue) else { return }
+
+        // 모든 Pet에 적용
+        for (_, session) in sessions {
+            session.petWindow.petView.skin = skinType
+        }
+
+        // 저장
+        UserDefaults.standard.set(skinType.rawValue, forKey: "claudepet_skin")
+
+        let msg = skinType == .spring ? "봄이 왔어! 🌸" : "기본 스킨으로 돌아왔어!"
+        if let session = sessions.values.first {
+            showSpeech(msg, for: session)
+        }
+    }
+
     @objc private func quitApp() {
         NSApplication.shared.terminate(nil)
+    }
+
+    // MARK: - Tool Name Mapping
+
+    private func toolMessage(for tool: String) -> String {
+        switch tool.lowercased() {
+        case "bash": return "명령어 실행 중..."
+        case "read": return "파일 읽는 중..."
+        case "edit": return "코드 수정 중..."
+        case "write": return "파일 작성 중..."
+        case "grep": return "코드 검색 중..."
+        case "glob": return "파일 찾는 중..."
+        case "agent": return "에이전트 작업 중..."
+        case "webcrawl", "webfetch": return "웹 검색 중..."
+        case "websearch": return "웹 검색 중..."
+        case "notebookedit": return "노트북 수정 중..."
+        case let t where t.contains("task"): return "작업 관리 중..."
+        case let t where t.contains("mcp"): return "플러그인 실행 중..."
+        default: return "작업 중..."
+        }
+    }
+
+    // MARK: - Time Tracking
+
+    private var lastMinuteTrack: Int = 0
+
+    private func startTimeTracking() {
+        // 1초마다 세션 시간 업데이트
+        Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            self?.updateSessionTimes()
+        }
+    }
+
+    private func updateSessionTimes() {
+        for (id, session) in sessions {
+            // 작업 중인 세션만 초 누적
+            if session.lastStatus == .working {
+                sessions[id]?.workingSeconds += 1
+
+                // 전체 시간은 1분마다만 업데이트
+                let totalSecs = sessions[id]?.workingSeconds ?? 0
+                if totalSecs / 60 > lastMinuteTrack {
+                    lastMinuteTrack = totalSecs / 60
+                    timeTracker.addMinute()
+                }
+            }
+
+            let secs = sessions[id]?.workingSeconds ?? 0
+            sessions[id]?.petWindow.petView.workingSeconds = secs
+            sessions[id]?.petWindow.petView.showTimer = showTimerEnabled
+        }
     }
 
     // MARK: - Monitoring
@@ -155,6 +289,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 sessions[info.sessionId]?.lastStatus = info.status
                 sessions[info.sessionId]?.cwd = info.cwd
                 existing.petWindow.petView.claudeStatus = info.status
+
+                // 작업 중일 때 도구가 바뀌면 말풍선 업데이트
+                if info.status == .working && info.tool != "none" && info.tool != existing.lastTool {
+                    sessions[info.sessionId]?.lastTool = info.tool
+                    showSpeech(toolMessage(for: info.tool), for: existing)
+                }
 
                 // 권한 대기 중엔 계속 점프 유지
                 if info.status == .waitingForPermission {
@@ -314,6 +454,41 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         case .notRunning: statusText = "⚫ 꺼짐"
         }
         menu.addItem(NSMenuItem(title: "\(dir.isEmpty ? "Claude" : dir) - \(statusText)", action: nil, keyEquivalent: ""))
+
+        // 세션 시간
+        let sessionSecs = Int(Date().timeIntervalSince(session.sessionStart))
+        let workSecs = session.workingSeconds
+        let sessionText = String(format: "%02d분%02d초", sessionSecs / 60, sessionSecs % 60)
+        let workText = String(format: "%02d분%02d초", workSecs / 60, workSecs % 60)
+        menu.addItem(NSMenuItem(title: "📊 세션 \(sessionText) (작업 \(workText))", action: nil, keyEquivalent: ""))
+
+        // 전체 작업 시간
+        let totalMins = timeTracker.todayTotalMinutes()
+        menu.addItem(NSMenuItem(title: "📊 오늘 총 작업: \(timeTracker.formatMinutes(totalMins))", action: nil, keyEquivalent: ""))
+
+        menu.addItem(NSMenuItem.separator())
+
+        // 시간 표시 토글
+        let timerToggle = NSMenuItem(title: "작업시간 표시", action: #selector(toggleTimer), keyEquivalent: "")
+        timerToggle.target = self
+        timerToggle.state = showTimerEnabled ? .on : .off
+        menu.addItem(timerToggle)
+
+        // 스킨 서브메뉴
+        let skinMenu = NSMenu()
+        for skinType in PetSkinType.allCases {
+            let item = NSMenuItem(title: skinType.rawValue, action: #selector(changeSkin(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = skinType.rawValue
+            if session.petWindow.petView.skin == skinType {
+                item.state = .on
+            }
+            skinMenu.addItem(item)
+        }
+        let skinItem = NSMenuItem(title: "스킨", action: nil, keyEquivalent: "")
+        skinItem.submenu = skinMenu
+        menu.addItem(skinItem)
+
         menu.addItem(NSMenuItem.separator())
 
         let quitItem = NSMenuItem(title: "종료", action: #selector(quitApp), keyEquivalent: "")

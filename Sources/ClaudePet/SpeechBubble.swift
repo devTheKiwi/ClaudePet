@@ -49,6 +49,14 @@ class SpeechBubbleWindow: NSWindow {
     func show(text: String, at point: NSPoint, persistent: Bool = false) {
         dismissTimer?.invalidate()
 
+        // 현재 스킨 적용
+        if let saved = UserDefaults.standard.string(forKey: "claudepet_skin"),
+           let skinType = PetSkinType(rawValue: saved) {
+            bubbleView.skin = skinType
+        } else {
+            bubbleView.skin = .basic
+        }
+
         label.stringValue = text
 
         // 텍스트 크기에 맞게 윈도우 리사이즈
@@ -115,6 +123,8 @@ class SpeechBubbleWindow: NSWindow {
 // MARK: - Speech Bubble View (말풍선 그리기)
 
 class SpeechBubbleView: NSView {
+    var skin: PetSkinType = .basic
+
     override func draw(_ dirtyRect: NSRect) {
         guard let context = NSGraphicsContext.current?.cgContext else { return }
         context.clear(bounds)
@@ -127,6 +137,21 @@ class SpeechBubbleView: NSView {
             height: bounds.height - tailHeight - 4
         )
 
+        // 스킨별 색상
+        let bgColor: NSColor
+        let borderColor: NSColor
+        let tailColor: NSColor
+
+        if skin == .spring {
+            bgColor = NSColor(red: 1.0, green: 0.95, blue: 0.96, alpha: 1.0)     // 연한 핑크
+            borderColor = NSColor(red: 0.95, green: 0.75, blue: 0.80, alpha: 1.0) // 핑크 테두리
+            tailColor = bgColor
+        } else {
+            bgColor = NSColor.white
+            borderColor = NSColor(white: 0.85, alpha: 1.0)
+            tailColor = NSColor.white
+        }
+
         // 말풍선 배경 (그림자)
         let shadowColor = NSColor(white: 0, alpha: 0.12)
         shadowColor.setFill()
@@ -136,13 +161,13 @@ class SpeechBubbleView: NSView {
         )
         shadowPath.fill()
 
-        // 말풍선 배경 (흰색)
-        NSColor.white.setFill()
+        // 말풍선 배경
+        bgColor.setFill()
         let bubblePath = NSBezierPath(roundedRect: bubbleRect, xRadius: 12, yRadius: 12)
         bubblePath.fill()
 
         // 말풍선 테두리
-        NSColor(white: 0.85, alpha: 1.0).setStroke()
+        borderColor.setStroke()
         bubblePath.lineWidth = 1.0
         bubblePath.stroke()
 
@@ -154,11 +179,11 @@ class SpeechBubbleView: NSView {
         tailPath.line(to: NSPoint(x: tailCenterX + 6, y: tailHeight + 2))
         tailPath.close()
 
-        NSColor.white.setFill()
+        tailColor.setFill()
         tailPath.fill()
 
         // 꼬리 테두리 (양쪽 선만)
-        NSColor(white: 0.85, alpha: 1.0).setStroke()
+        borderColor.setStroke()
         let tailStroke = NSBezierPath()
         tailStroke.move(to: NSPoint(x: tailCenterX - 6, y: tailHeight + 2))
         tailStroke.line(to: NSPoint(x: tailCenterX, y: 0))

@@ -1,5 +1,24 @@
 import Cocoa
 
+// MARK: - Pet Skin
+
+enum PetSkinType: String, CaseIterable {
+    case basic = "기본"
+    case spring = "봄 에디션 🌸"
+}
+
+// MARK: - Petal Particle (봄 에디션용)
+
+struct Petal {
+    var x: CGFloat
+    var y: CGFloat
+    var size: CGFloat
+    var speed: CGFloat
+    var swayPhase: CGFloat
+    var rotation: CGFloat
+    var alpha: CGFloat
+}
+
 // MARK: - Pet State
 
 enum PetState {
@@ -69,7 +88,7 @@ class PetWindow: NSWindow {
 
         let screen = NSScreen.main!
         let visibleFrame = screen.visibleFrame
-        let petSize = NSSize(width: 64, height: 64)
+        let petSize = NSSize(width: 96, height: 64)
 
         let x = startX ?? CGFloat.random(in: visibleFrame.origin.x...(visibleFrame.maxX - petSize.width))
         let y = visibleFrame.origin.y
@@ -138,6 +157,11 @@ class PetView: NSView {
     var onClicked: (() -> Void)?
     var onDoubleClicked: (() -> Void)?
     var onRightClicked: ((NSEvent) -> Void)?
+    var skin: PetSkinType = .basic {
+        didSet { needsDisplay = true }
+    }
+    var workingSeconds: Int = 0
+    var showTimer: Bool = true
 
     // 세션별 색상
     private let bodyColor: NSColor
@@ -146,11 +170,20 @@ class PetView: NSView {
     private let eyeWhite = NSColor.white
     private let pupilColor = NSColor(red: 0.15, green: 0.15, blue: 0.15, alpha: 1.0)
 
+    // 봄 에디션 파티클
+    private var petals: [Petal] = []
+    private let maxPetals = 8
+
     init(frame: NSRect, color: PetColor) {
         self.bodyColor = color.body
         self.bodyDarkColor = color.bodyDark
         self.footColor = color.foot
         super.init(frame: frame)
+        // 저장된 스킨 불러오기
+        if let saved = UserDefaults.standard.string(forKey: "claudepet_skin"),
+           let skinType = PetSkinType(rawValue: saved) {
+            self.skin = skinType
+        }
     }
 
     required init?(coder: NSCoder) {
@@ -314,7 +347,122 @@ class PetView: NSView {
         if claudeStatus == .working {
             drawWorkingEffect(centerX: centerX, topY: bodyY + bodyHeight + headHeight - 10)
         }
+
+        // === 시간 뱃지 (왼쪽 대각선) ===
+        if showTimer && workingSeconds > 0 {
+            drawTimeBadge(bodyX: bodyX, headTopY: headY + headHeight, bounceY: bounceY)
+        }
+
+        // === 스킨 악세서리 ===
+        if skin == .spring {
+            drawSpringAccessory(centerX: centerX, headTopY: headY + headHeight, bounceY: bounceY)
+            updateAndDrawPetals()
+        }
     }
+
+    // MARK: - Time Badge
+
+    private func drawTimeBadge(bodyX: CGFloat, headTopY: CGFloat, bounceY: CGFloat) {
+        let totalMins = workingSeconds / 60
+        let secs = workingSeconds % 60
+        let timeText = String(format: "%02d:%02d", totalMins, secs)
+
+        let font = NSFont.systemFont(ofSize: 8, weight: .semibold)
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: NSColor(white: 0.35, alpha: 1.0),
+        ]
+        let textSize = (timeText as NSString).size(withAttributes: attrs)
+
+        let badgeWidth = textSize.width + 8
+        let badgeHeight = textSize.height + 4
+        let badgeX = bodyX - badgeWidth + 10
+        let badgeY = headTopY + bounceY - 2
+
+        // 뱃지 배경
+        let bgColor = skin == .spring
+            ? NSColor(red: 1.0, green: 0.93, blue: 0.95, alpha: 0.9)
+            : NSColor(white: 0.95, alpha: 0.9)
+        bgColor.setFill()
+        let badge = NSBezierPath(roundedRect: NSRect(x: badgeX, y: badgeY, width: badgeWidth, height: badgeHeight), xRadius: 5, yRadius: 5)
+        badge.fill()
+
+        // 뱃지 테두리
+        let borderColor = skin == .spring
+            ? NSColor(red: 0.9, green: 0.75, blue: 0.8, alpha: 0.7)
+            : NSColor(white: 0.8, alpha: 0.7)
+        borderColor.setStroke()
+        badge.lineWidth = 0.5
+        badge.stroke()
+
+        // 텍스트
+        (timeText as NSString).draw(at: NSPoint(x: badgeX + 4, y: badgeY + 2), withAttributes: attrs)
+    }
+
+    // MARK: - Spring Skin
+
+    private func drawSpringAccessory(centerX: CGFloat, headTopY: CGFloat, bounceY: CGFloat) {
+        let flowerX = centerX + 8
+        let flowerY = headTopY + 6
+
+        // 꽃잎 5장 (분홍)
+        let petalColor = NSColor(red: 1.0, green: 0.7, blue: 0.78, alpha: 0.95)
+        petalColor.setFill()
+        let petalSize: CGFloat = 4.5
+        for i in 0..<5 {
+            let angle = (Double(i) * 72.0 + Double(animationFrame) * 0.5) * .pi / 180.0
+            let px = flowerX + cos(angle) * 3.5 - petalSize / 2
+            let py = flowerY + sin(angle) * 3.5 - petalSize / 2
+            NSBezierPath(ovalIn: NSRect(x: px, y: py, width: petalSize, height: petalSize)).fill()
+        }
+
+        // 꽃 중심 (노랑)
+        NSColor(red: 1.0, green: 0.9, blue: 0.4, alpha: 1.0).setFill()
+        NSBezierPath(ovalIn: NSRect(x: flowerX - 2.5, y: flowerY - 2.5, width: 5, height: 5)).fill()
+
+        // 줄기 (초록)
+        NSColor(red: 0.4, green: 0.7, blue: 0.35, alpha: 1.0).setStroke()
+        let stem = NSBezierPath()
+        stem.move(to: NSPoint(x: flowerX, y: flowerY - 3))
+        stem.line(to: NSPoint(x: flowerX + 1, y: flowerY - 8))
+        stem.lineWidth = 1.5
+        stem.stroke()
+    }
+
+    private func updateAndDrawPetals() {
+        // 새 꽃잎 추가
+        if petals.count < maxPetals && animationFrame % 12 == 0 {
+            petals.append(Petal(
+                x: CGFloat.random(in: -10...bounds.width + 10),
+                y: bounds.height + 5,
+                size: CGFloat.random(in: 2.5...4.5),
+                speed: CGFloat.random(in: 0.3...0.8),
+                swayPhase: CGFloat.random(in: 0...(2 * .pi)),
+                rotation: CGFloat.random(in: 0...(2 * .pi)),
+                alpha: CGFloat.random(in: 0.5...0.9)
+            ))
+        }
+
+        // 꽃잎 업데이트 및 그리기
+        var activePetals: [Petal] = []
+        for var petal in petals {
+            petal.y -= petal.speed
+            petal.x += sin(petal.swayPhase + petal.y * 0.05) * 0.5
+            petal.rotation += 0.03
+
+            if petal.y > -10 {
+                // 그리기
+                let pink = NSColor(red: 1.0, green: 0.75, blue: 0.82, alpha: petal.alpha)
+                pink.setFill()
+                let px = petal.x + sin(Double(petal.rotation)) * 1.5
+                NSBezierPath(ovalIn: NSRect(x: px, y: petal.y, width: petal.size, height: petal.size * 0.7)).fill()
+                activePetals.append(petal)
+            }
+        }
+        petals = activePetals
+    }
+
+    // MARK: - Effects
 
     private func drawWorkingEffect(centerX: CGFloat, topY: CGFloat) {
         let sparkleColor = NSColor(red: 1.0, green: 0.85, blue: 0.3, alpha: 0.8)

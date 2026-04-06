@@ -78,8 +78,35 @@ PLIST
 
 echo -e "${GREEN}  $APP_BUNDLE 설치 완료!${NC}"
 
-# ---- 4. Cleanup & Launch ----
-echo -e "${BOLD}[4/4] 정리 및 실행...${NC}"
+# ---- 4. 자동 시작 등록 ----
+echo -e "${BOLD}[4/5] 자동 시작 등록...${NC}"
+
+LAUNCH_AGENT_DIR="$HOME/Library/LaunchAgents"
+LAUNCH_AGENT="$LAUNCH_AGENT_DIR/com.claudepet.app.plist"
+mkdir -p "$LAUNCH_AGENT_DIR"
+
+cat > "$LAUNCH_AGENT" << PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.claudepet.app</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>open</string>
+        <string>${APP_BUNDLE}</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+</dict>
+</plist>
+PLIST
+
+echo -e "${GREEN}  PC 시작 시 자동 실행 등록 완료!${NC}"
+
+# ---- 5. Cleanup & Launch ----
+echo -e "${BOLD}[5/5] 정리 및 실행...${NC}"
 rm -rf "$TMP_DIR"
 
 echo ""
@@ -89,6 +116,7 @@ echo -e "${GREEN}============================================${NC}"
 echo ""
 echo "  실행: open ~/Applications/ClaudePet.app"
 echo "  종료: 메뉴바 🐛 > 종료"
+echo "  PC 시작 시 자동 실행됩니다!"
 echo ""
 
 open "$APP_BUNDLE"
