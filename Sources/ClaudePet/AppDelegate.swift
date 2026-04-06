@@ -205,8 +205,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Spawn / Remove
 
     private func spawnPet(for info: SessionInfo) {
-        let colorIndex = nextColorIndex % PetColor.palette.count
-        nextColorIndex += 1
+        // 사용 중인 색상 제외하고 랜덤 선택
+        let usedColors = Set(sessions.values.map { $0.colorIndex })
+        let available = (1..<PetColor.palette.count).filter { !usedColors.contains($0) }
+        let colorIndex = available.randomElement() ?? Int.random(in: 1..<PetColor.palette.count)
 
         let color = PetColor.palette[colorIndex]
         let petWindow = PetWindow(sessionId: info.sessionId, color: color)
