@@ -534,19 +534,28 @@
     <h2>설치</h2>
     <p>두 가지 방법 중 편한 걸로!</p>
 
+    <!-- Homebrew 섹션 임시 숨김 (cask 동작 확인 후 복구 예정)
     <h3 style="margin-top:32px; margin-bottom:12px; font-size:16px; color:var(--text-dim);">Homebrew (추천)</h3>
     <div class="install-code">
         <button class="copy-btn" onclick="copyBrew()">복사</button>
         <span class="prompt">$ </span>brew tap devTheKiwi/claudepet && brew install --cask claudepet
     </div>
+    -->
 
-    <h3 style="margin-top:24px; margin-bottom:12px; font-size:16px; color:var(--text-dim);">또는 소스 빌드</h3>
+    <h3 style="margin-top:32px; margin-bottom:12px; font-size:16px; color:var(--text-dim);">macOS (소스 빌드)</h3>
     <div class="install-code">
         <button class="copy-btn" onclick="copyInstall()">복사</button>
         <span class="prompt">$ </span>curl -sL https://raw.githubusercontent.com/devTheKiwi/ClaudePet/main/remote-install.sh | bash
     </div>
-
     <p class="install-note">macOS 13+ / Apple Silicon</p>
+
+    <h3 style="margin-top:32px; margin-bottom:12px; font-size:16px; color:var(--text-dim);">Windows</h3>
+    <div class="install-code">
+        <a href="https://github.com/devTheKiwi/ClaudePet/releases/latest" style="color:inherit; text-decoration:none; display:block;">
+            <span class="prompt">↓ </span>ClaudePet 최신 버전 다운로드 (.exe, 77MB)
+        </a>
+    </div>
+    <p class="install-note">Windows 10 (1809+) / Windows 11</p>
 </section>
 
 <!-- Footer -->
