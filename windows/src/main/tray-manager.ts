@@ -27,7 +27,7 @@ export class TrayManager {
 
   rebuildMenu(sessions: TraySessionEntry[]): void {
     const menu = new Menu();
-    menu.append(new MenuItem({ label: 'Claude Pet v2.3.1 (Windows)', enabled: false }));
+    menu.append(new MenuItem({ label: 'Claude Pet v2.4.0 (Windows)', enabled: false }));
     menu.append(new MenuItem({ type: 'separator' }));
 
     if (sessions.length === 0) {

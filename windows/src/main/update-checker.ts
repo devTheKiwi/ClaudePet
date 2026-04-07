@@ -11,7 +11,7 @@ const REPO_API = 'https://api.github.com/repos/devTheKiwi/ClaudePet/releases/lat
 const RELEASES_PAGE = 'https://github.com/devTheKiwi/ClaudePet/releases/latest';
 
 export class UpdateChecker {
-  public readonly currentVersion = '2.3.1';
+  public readonly currentVersion = '2.4.0';
   public latestVersion: string | null = null;
   public updateAvailable = false;
   public onResult: ((message: string) => void) | null = null;
