@@ -235,6 +235,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             self?.updateSessionTimes()
         }
+        // 15fps로 말풍선 위치 추적
+        Timer.scheduledTimer(withTimeInterval: 1.0 / 15.0, repeats: true) { [weak self] _ in
+            self?.updateBubblePositions()
+        }
+    }
+
+    private func updateBubblePositions() {
+        for (_, session) in sessions {
+            guard session.speechBubble.isVisible else { continue }
+            let petFrame = session.petWindow.frame
+            let bubbleX = petFrame.midX
+            let bubbleY = petFrame.maxY + 4
+            session.speechBubble.updatePosition(to: NSPoint(x: bubbleX, y: bubbleY))
+        }
     }
 
     private func updateSessionTimes() {

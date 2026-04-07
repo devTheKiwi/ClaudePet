@@ -105,6 +105,16 @@ class SpeechBubbleWindow: NSWindow {
         }
     }
 
+    func updatePosition(to point: NSPoint) {
+        var origin = NSPoint(x: point.x - frame.width / 2, y: point.y)
+        if let screen = NSScreen.main {
+            let visibleFrame = screen.visibleFrame
+            if origin.x < visibleFrame.origin.x { origin.x = visibleFrame.origin.x }
+            if origin.x + frame.width > visibleFrame.maxX { origin.x = visibleFrame.maxX - frame.width }
+        }
+        setFrameOrigin(origin)
+    }
+
     func forceDismiss() {
         dismissTimer?.invalidate()
         dismiss()
