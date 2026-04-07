@@ -6,94 +6,55 @@
   ▘▘ ▝▝
 ```
 
-macOS Dock 위를 돌아다니는 Claude Code 데스크탑 펫!
+macOS Dock 위를 돌아다니는 Claude 데스크탑 펫!
 
-Claude Code와 실시간 연동되어 작업 상태를 알려주고, 가끔 말도 걸어줍니다.
+Claude Code / Desktop과 실시간 연동되어 작업 상태를 알려주고, 가끔 말도 걸어줍니다.
 
-## Features
-
-- Dock 바 위에서 걸어다니는 귀여운 Claude 캐릭터
-- **Claude Code 실시간 연동** (Hook 기반)
-  - 작업 시작/완료 알림
-  - 권한 요청 시 알림 (승인할 때까지 말풍선 유지!)
-- **멀티 세션 지원** - 세션마다 다른 색상의 캐릭터 스폰
-- 클릭/더블클릭/우클릭 상호작용
-- 랜덤 대화 (45~90초 간격)
-- 메뉴바 아이콘 (🐛)으로 세션 상태 확인
-
-## 세션별 색상
-
-| 순서 | 색상 |
-|------|------|
-| 1 | 🟠 오렌지 (기본) |
-| 2 | 🔵 블루 |
-| 3 | 🟢 그린 |
-| 4 | 🟣 퍼플 |
-| 5 | 🩷 핑크 |
-| 6 | 🩵 틸 |
-
-## Requirements
-
-- macOS 13.0+
-- Swift 5.9+ (Xcode Command Line Tools)
-- Claude Code (선택사항, 연동 기능에 필요)
+**[홈페이지](https://devthekiwi.github.io/ClaudePet/)**
 
 ## Install
 
+**Homebrew (추천)**
 ```bash
-git clone https://github.com/YOUR_USERNAME/ClaudePet.git
-cd ClaudePet
-chmod +x install.sh
-./install.sh
+brew tap devTheKiwi/claudepet && brew install --cask claudepet
 ```
 
-설치 스크립트가 자동으로:
-1. Swift 프로젝트 빌드
-2. `~/Applications/ClaudePet.app` 생성
-3. Claude Code Hook 설정
-
-## Manual Build
-
+**또는 소스 빌드**
 ```bash
-swift build -c release
-.build/release/ClaudePet
+curl -sL https://raw.githubusercontent.com/devTheKiwi/ClaudePet/main/remote-install.sh | bash
 ```
 
-## Run
+## Features
 
-```bash
-# .app 번들로 실행
-open ~/Applications/ClaudePet.app
-
-# 또는 직접 실행
-~/Applications/ClaudePet.app/Contents/MacOS/ClaudePet
-```
+- **Claude Code 실시간 연동** - Hook 기반 작업 시작/완료/권한 요청 감지
+- **Claude Desktop 지원** - Desktop 켜면 커피잔 든 펫 등장 ☕
+- **토큰 사용량 추적** - 세션/일일 토큰, 캐시 절약률, 마일스톤 알림
+- **도구별 상세 알림** - "명령어 실행 중...", "코드 수정 중..." 등
+- **작업시간 트래커** - 초 단위 실시간 뱃지
+- **스킨 시스템** - 기본 / 봄 에디션 🌸
+- **멀티 세션** - 세션마다 랜덤 색상 캐릭터
+- **상호작용** - 클릭/더블클릭/우클릭
+- **자동 업데이트 알림** - 새 버전 나오면 Pet이 알려줌
+- **PC 시작 시 자동 실행**
 
 ## Uninstall
 
 ```bash
-chmod +x uninstall.sh
-./uninstall.sh
+brew uninstall --cask claudepet
 ```
 
-## 상호작용
-
-| 액션 | 반응 |
-|------|------|
-| 클릭 | 상태에 따른 말풍선 |
-| 더블클릭 | 점프! |
-| 우클릭 | 상태 메뉴 |
-| 드래그 | 위치 이동 |
-
-## Claude Code 연동 구조
-
+또는 수동:
+```bash
+pkill -f ClaudePet
+rm -rf ~/Applications/ClaudePet.app
+rm -f ~/.claude/hooks/claudepet-hook.sh
+rm -f ~/Library/LaunchAgents/com.claudepet.app.plist
 ```
-Claude Code 이벤트 발생
-  → Hook 스크립트 실행 (claudepet-hook.sh)
-    → /tmp/claudepet-{session_id}.json 기록
-      → ClaudePet이 파일 감시
-        → 캐릭터 반응!
-```
+
+## Requirements
+
+- macOS 13.0+
+- Apple Silicon
 
 ## License
 
