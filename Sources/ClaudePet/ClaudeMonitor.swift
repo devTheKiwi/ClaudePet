@@ -1,4 +1,5 @@
 import Foundation
+import Cocoa
 
 enum ClaudeStatus: Equatable {
     case notRunning
@@ -21,6 +22,12 @@ struct SessionInfo: Equatable {
 
 class ClaudeMonitor {
     private let staleTimeout: Int = 7200 // 2시간 이상 업데이트 없으면 정리
+
+    func isDesktopRunning() -> Bool {
+        return NSWorkspace.shared.runningApplications.contains {
+            $0.bundleIdentifier == "com.anthropic.claudefordesktop"
+        }
+    }
 
     func checkSessions() -> [SessionInfo] {
         var sessions: [SessionInfo] = []

@@ -69,6 +69,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     let timeTracker = TimeTracker()
     let updateChecker = UpdateChecker()
     var showTimerEnabled: Bool = true
+    var desktopWasRunning: Bool = false
+    var desktopStartTime: Date?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupStatusBar()
@@ -235,11 +237,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func updateSessionTimes() {
         for (id, session) in sessions {
-            // 작업 중인 세션만 초 누적
+            if id == "desktop" {
+                // Desktop: 켜진 시점부터 계속 카운트
+                if let start = desktopStartTime {
+                    let secs = Int(Date().timeIntervalSince(start))
+                    sessions[id]?.petWindow.petView.workingSeconds = secs
+                    sessions[id]?.petWindow.petView.showTimer = showTimerEnabled
+                }
+                continue
+            }
+
+            // Code: 작업 중인 세션만 초 누적
             if session.lastStatus == .working {
                 sessions[id]?.workingSeconds += 1
 
-                // 전체 시간은 1분마다만 업데이트
                 let totalSecs = sessions[id]?.workingSeconds ?? 0
                 if totalSecs / 60 > lastMinuteTrack {
                     lastMinuteTrack = totalSecs / 60
@@ -268,7 +279,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 사라진 세션 제거 (단, "default"는 절대 제거하지 않음)
         let removedIds = Set(sessions.keys).subtracting(liveIds)
         for id in removedIds {
-            if id == "default" { continue } // 기본 Pet은 유지
+            if id == "default" || id == "desktop" { continue } // 기본/Desktop Pet은 유지
 
             if let session = sessions[id] {
                 // 마지막 하나 남으면 제거하지 않고 default로 전환
@@ -336,7 +347,77 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
+        // Desktop 감지
+        syncDesktop()
+
         rebuildStatusMenu()
+    }
+
+    private func syncDesktop() {
+        let isRunning = claudeMonitor.isDesktopRunning()
+        let desktopId = "desktop"
+
+        if isRunning && !desktopWasRunning {
+            // Desktop 켜짐 → 펫 스폰
+            desktopStartTime = Date()
+            if sessions[desktopId] == nil {
+                let color = PetColor.palette[0]
+                let screen = NSScreen.main!
+                let startX = screen.visibleFrame.midX + 60
+                let petWindow = PetWindow(sessionId: desktopId, color: color, startX: startX)
+                let speechBubble = SpeechBubbleWindow()
+                petWindow.orderFront(nil)
+                petWindow.petView.petMode = .desktop
+                setupClickHandlers(for: desktopId, petWindow: petWindow)
+
+                let session = PetSession(
+                    petWindow: petWindow,
+                    speechBubble: speechBubble,
+                    colorIndex: 0,
+                    lastStatus: .idle,
+                    cwd: ""
+                )
+                sessions[desktopId] = session
+                showSpeech("Claude Desktop 왔다! 반가워!", for: session)
+            }
+        } else if !isRunning && desktopWasRunning {
+            // Desktop 꺼짐 → 반응
+            if let session = sessions[desktopId] {
+                let usedMins = Int(Date().timeIntervalSince(desktopStartTime ?? Date()) / 60)
+                let usedSecs = Int(Date().timeIntervalSince(desktopStartTime ?? Date())) % 60
+                let timeText = String(format: "%02d분%02d초", usedMins, usedSecs)
+                showSpeech("\(timeText) 사용했어! 수고했어~", for: session)
+
+                let petWin = session.petWindow
+                let bubbleWin = session.speechBubble
+                sessions.removeValue(forKey: desktopId)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                    petWin.orderOut(nil)
+                    bubbleWin.orderOut(nil)
+                }
+            }
+            desktopStartTime = nil
+        } else if isRunning, let session = sessions[desktopId], let start = desktopStartTime {
+            // Desktop 실행 중 → 시간 업데이트 + 30분 알림
+            let secs = Int(Date().timeIntervalSince(start))
+            session.petWindow.petView.workingSeconds = secs
+            session.petWindow.petView.showTimer = showTimerEnabled
+
+            // 30분마다 알림
+            let mins = secs / 60
+            if mins > 0 && mins % 30 == 0 && secs % 60 < 3 {
+                let messages = [
+                    "\(mins)분 지났어!",
+                    "\(mins)분이야! 스트레칭 어때?",
+                    "벌써 \(mins)분! 물 한잔 마셔!",
+                ]
+                if let msg = messages.randomElement() {
+                    showSpeech(msg, for: session)
+                }
+            }
+        }
+
+        desktopWasRunning = isRunning
     }
 
     // MARK: - Click Handler Setup

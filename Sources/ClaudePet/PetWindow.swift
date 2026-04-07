@@ -1,5 +1,12 @@
 import Cocoa
 
+// MARK: - Pet Mode
+
+enum PetMode {
+    case code
+    case desktop
+}
+
 // MARK: - Pet Skin
 
 enum PetSkinType: String, CaseIterable {
@@ -157,6 +164,7 @@ class PetView: NSView {
     var onClicked: (() -> Void)?
     var onDoubleClicked: (() -> Void)?
     var onRightClicked: ((NSEvent) -> Void)?
+    var petMode: PetMode = .code
     var skin: PetSkinType = .basic {
         didSet { needsDisplay = true }
     }
@@ -353,6 +361,11 @@ class PetView: NSView {
             drawTimeBadge(bodyX: bodyX, headTopY: headY + headHeight, bounceY: bounceY)
         }
 
+        // === Desktop 모드: 커피잔 ===
+        if petMode == .desktop {
+            drawCoffee(centerX: centerX, bodyY: bodyY, bounceY: bounceY)
+        }
+
         // === 스킨 악세서리 ===
         if skin == .spring {
             drawSpringAccessory(centerX: centerX, headTopY: headY + headHeight, bounceY: bounceY)
@@ -397,6 +410,48 @@ class PetView: NSView {
 
         // 텍스트
         (timeText as NSString).draw(at: NSPoint(x: badgeX + 4, y: badgeY + 2), withAttributes: attrs)
+    }
+
+    // MARK: - Coffee (Desktop Mode)
+
+    private func drawCoffee(centerX: CGFloat, bodyY: CGFloat, bounceY: CGFloat) {
+        let cupX = centerX + 16
+        let cupY = bodyY + 6
+
+        // 컵 몸통 (갈색)
+        NSColor(red: 0.55, green: 0.35, blue: 0.20, alpha: 1.0).setFill()
+        let cup = NSBezierPath(roundedRect: NSRect(x: cupX, y: cupY, width: 9, height: 10), xRadius: 2, yRadius: 2)
+        cup.fill()
+
+        // 컵 안쪽 커피 (진한 갈색)
+        NSColor(red: 0.35, green: 0.20, blue: 0.10, alpha: 1.0).setFill()
+        NSBezierPath(roundedRect: NSRect(x: cupX + 1.5, y: cupY + 6, width: 6, height: 3), xRadius: 1, yRadius: 1).fill()
+
+        // 컵 손잡이
+        NSColor(red: 0.55, green: 0.35, blue: 0.20, alpha: 1.0).setStroke()
+        let handle = NSBezierPath()
+        handle.move(to: NSPoint(x: cupX + 9, y: cupY + 7))
+        handle.curve(to: NSPoint(x: cupX + 9, y: cupY + 3),
+                     controlPoint1: NSPoint(x: cupX + 13, y: cupY + 7),
+                     controlPoint2: NSPoint(x: cupX + 13, y: cupY + 3))
+        handle.lineWidth = 1.5
+        handle.stroke()
+
+        // 김 (흰색 웨이브, 애니메이션)
+        let steamAlpha: CGFloat = 0.6
+        NSColor(white: 1.0, alpha: steamAlpha).setStroke()
+        for i in 0..<2 {
+            let steam = NSBezierPath()
+            let sx = cupX + 3 + CGFloat(i) * 4
+            let sy = cupY + 11
+            let phase = Double(animationFrame) * 0.12 + Double(i) * 1.5
+            steam.move(to: NSPoint(x: sx, y: sy))
+            steam.curve(to: NSPoint(x: sx + sin(phase) * 2, y: sy + 7),
+                       controlPoint1: NSPoint(x: sx + sin(phase) * 3, y: sy + 2),
+                       controlPoint2: NSPoint(x: sx - sin(phase) * 3, y: sy + 5))
+            steam.lineWidth = 1.0
+            steam.stroke()
+        }
     }
 
     // MARK: - Spring Skin
