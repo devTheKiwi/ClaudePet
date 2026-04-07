@@ -532,14 +532,21 @@
 <!-- Install -->
 <section class="install" id="install">
     <h2>설치</h2>
-    <p>터미널에 한 줄 붙여넣기. 끝!</p>
+    <p>두 가지 방법 중 편한 걸로!</p>
 
+    <h3 style="margin-top:32px; margin-bottom:12px; font-size:16px; color:var(--text-dim);">Homebrew (추천)</h3>
+    <div class="install-code">
+        <button class="copy-btn" onclick="copyBrew()">복사</button>
+        <span class="prompt">$ </span>brew tap devTheKiwi/claudepet && brew install --cask claudepet
+    </div>
+
+    <h3 style="margin-top:24px; margin-bottom:12px; font-size:16px; color:var(--text-dim);">또는 소스 빌드</h3>
     <div class="install-code">
         <button class="copy-btn" onclick="copyInstall()">복사</button>
         <span class="prompt">$ </span>curl -sL https://raw.githubusercontent.com/devTheKiwi/ClaudePet/main/remote-install.sh | bash
     </div>
 
-    <p class="install-note">macOS 13+ / Apple Silicon / Xcode CLI Tools 자동 설치</p>
+    <p class="install-note">macOS 13+ / Apple Silicon</p>
 </section>
 
 <!-- Footer -->
@@ -645,6 +652,14 @@ createPet('pet-desktop', '#D97757', '#A6572E', 'desktop',
 </script>
 
 <script>
+function copyBrew() {
+    const cmd = 'brew tap devTheKiwi/claudepet && brew install --cask claudepet';
+    navigator.clipboard.writeText(cmd).then(() => {
+        const btns = document.querySelectorAll('.copy-btn');
+        btns[0].textContent = '복사됨!';
+        setTimeout(() => btns[0].textContent = '복사', 2000);
+    });
+}
 function copyInstall() {
     const cmd = 'curl -sL https://raw.githubusercontent.com/devTheKiwi/ClaudePet/main/remote-install.sh | bash';
     navigator.clipboard.writeText(cmd).then(() => {
