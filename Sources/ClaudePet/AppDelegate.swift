@@ -68,9 +68,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var nextColorIndex: Int = 0
     let timeTracker = TimeTracker()
     let updateChecker = UpdateChecker()
+    let tokenTracker = TokenTracker()
     var showTimerEnabled: Bool = true
     var desktopWasRunning: Bool = false
     var desktopStartTime: Date?
+    var lastTokenMilestone: Int = 0
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupStatusBar()
@@ -347,10 +349,44 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
+        // 토큰 마일스톤 체크
+        checkTokenMilestones()
+
         // Desktop 감지
         syncDesktop()
 
         rebuildStatusMenu()
+    }
+
+    private func checkTokenMilestones() {
+        let today = tokenTracker.todayUsage()
+        let totalK = today.totalTokens / 1000
+
+        let milestones: [(Int, String)] = [
+            (10, "오늘 10K 토큰 사용!"),
+            (50, "오늘 50K 돌파!"),
+            (100, "오늘 100K! 열심히 일하는 중!"),
+            (200, "오늘 200K...많이 썼다!"),
+            (500, "오늘 500K!! 대작업이었구나!"),
+            (1000, "오늘 1M!!! 역대급이야!"),
+        ]
+
+        for (threshold, message) in milestones.reversed() {
+            if totalK >= threshold && lastTokenMilestone < threshold {
+                lastTokenMilestone = threshold
+                if let session = sessions.values.first(where: { $0.petWindow.petView.petMode == .code }) ?? sessions.values.first {
+                    showSpeech(message, for: session)
+                }
+                break
+            }
+        }
+
+        // 자정에 리셋
+        let hour = Calendar.current.component(.hour, from: Date())
+        let minute = Calendar.current.component(.minute, from: Date())
+        if hour == 0 && minute == 0 {
+            lastTokenMilestone = 0
+        }
     }
 
     private func syncDesktop() {
@@ -433,7 +469,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         petWindow.petView.onRightClicked = { [weak self] event in
             guard let session = self?.sessions[sessionId] else { return }
-            self?.handlePetRightClicked(event, session: session)
+            self?.handlePetRightClicked(event, sessionId: sessionId, session: session)
         }
     }
 
@@ -537,7 +573,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         session.petWindow.petView.setState(.jumping)
     }
 
-    private func handlePetRightClicked(_ event: NSEvent, session: PetSession) {
+    private func handlePetRightClicked(_ event: NSEvent, sessionId: String = "", session: PetSession) {
         let menu = NSMenu()
         let dir = (session.cwd as NSString).lastPathComponent
 
@@ -560,6 +596,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 전체 작업 시간
         let totalMins = timeTracker.todayTotalMinutes()
         menu.addItem(NSMenuItem(title: "📊 오늘 총 작업: \(timeTracker.formatMinutes(totalMins))", action: nil, keyEquivalent: ""))
+
+        menu.addItem(NSMenuItem.separator())
+
+        // 토큰 사용량
+        let sessionUsage = tokenTracker.usageForSession(sessionId)
+        let todayUsage = tokenTracker.todayUsage()
+
+        if sessionUsage.totalTokens > 0 {
+            menu.addItem(NSMenuItem(title: "🪙 세션: \(TokenUsage.formatTokens(sessionUsage.totalTokens)) (입력 \(TokenUsage.formatTokens(sessionUsage.inputTokens + sessionUsage.cacheReadTokens)) / 출력 \(TokenUsage.formatTokens(sessionUsage.outputTokens)))", action: nil, keyEquivalent: ""))
+        }
+        if todayUsage.totalTokens > 0 {
+            let cacheRate = todayUsage.cacheReadTokens > 0 ? Int(Double(todayUsage.cacheReadTokens) / Double(todayUsage.cacheReadTokens + todayUsage.cacheCreationTokens + todayUsage.inputTokens) * 100) : 0
+            menu.addItem(NSMenuItem(title: "🪙 오늘 총: \(TokenUsage.formatTokens(todayUsage.totalTokens)) (캐시 \(cacheRate)%)", action: nil, keyEquivalent: ""))
+        }
 
         menu.addItem(NSMenuItem.separator())
 
