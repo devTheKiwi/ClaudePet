@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>ClaudePet Speech</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: transparent;
+      overflow: hidden;
+      -webkit-user-select: none;
+      pointer-events: none;
+    }
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+    #text {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: calc(100% - 10px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      color: rgb(51, 51, 51);
+      text-align: center;
+      padding: 0 12px;
+      box-sizing: border-box;
+      line-height: 1.3;
+      transform: translateY(-2px);
+    }
+  </style>
+</head>
+<body>
+  <canvas id="bg"></canvas>
+  <div id="text"></div>
+  <script type="module" src="./bubble.js"></script>
+</body>
+</html>
