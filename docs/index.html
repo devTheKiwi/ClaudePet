@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClaudePet - Dock 위의 Claude 친구</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --orange: #D97757;
+            --orange-dark: #B8563A;
+            --bg: #1a1a2e;
+            --bg-light: #222240;
+            --text: #e8e8f0;
+            --text-dim: #9999aa;
+            --card-bg: #2a2a48;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        /* Hero */
+        .hero {
+            text-align: center;
+            padding: 80px 20px 60px;
+            background: linear-gradient(180deg, #1a1a2e 0%, #222240 100%);
+        }
+
+        .hero-ascii {
+            font-family: monospace;
+            font-size: 28px;
+            color: var(--orange);
+            line-height: 1.2;
+            margin-bottom: 24px;
+            user-select: none;
+        }
+
+        .hero h1 {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .hero h1 span {
+            color: var(--orange);
+        }
+
+        .hero p {
+            font-size: 20px;
+            color: var(--text-dim);
+            max-width: 500px;
+            margin: 0 auto 40px;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 14px 32px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        }
+
+        .btn-primary {
+            background: var(--orange);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: var(--card-bg);
+            color: var(--text);
+            border: 1px solid #444466;
+        }
+
+        /* Pet Animation */
+        .pet-demo {
+            position: relative;
+            height: 130px;
+            margin: 40px auto 0;
+            max-width: 500px;
+        }
+
+        .pet-wrapper {
+            position: absolute;
+            animation: petWalk 8s ease-in-out infinite;
+        }
+
+        .pet-svg {
+            animation: petBounce 0.6s ease-in-out infinite;
+        }
+
+        .pet-foot-l {
+            animation: footLeft 0.4s ease-in-out infinite;
+        }
+
+        .pet-foot-r {
+            animation: footRight 0.4s ease-in-out infinite;
+        }
+
+        .pet-pupil-l, .pet-pupil-r {
+            animation: petLook 8s ease-in-out infinite;
+        }
+
+        /* 말풍선 (앱과 동일) */
+        .pet-bubble {
+            position: absolute;
+            top: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            color: #333;
+            padding: 6px 14px;
+            border-radius: 12px;
+            border: 1px solid #d9d9d9;
+            font-size: 12px;
+            font-weight: 500;
+            white-space: nowrap;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+            animation: bubbleFade 5s ease-in-out infinite;
+        }
+
+        .pet-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -7px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 7px solid white;
+        }
+
+        .pet-bubble::before {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-left: 7px solid transparent;
+            border-right: 7px solid transparent;
+            border-top: 8px solid #d9d9d9;
+        }
+
+        @keyframes petWalk {
+            0% { left: 5%; }
+            50% { left: 75%; }
+            100% { left: 5%; }
+        }
+
+        @keyframes petBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+        }
+
+        @keyframes petLook {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(1.5px); }
+            75% { transform: translateX(-1.5px); }
+        }
+
+        @keyframes footLeft {
+            0%, 100% { transform: translateX(0); }
+            50% { transform: translateX(-2px); }
+        }
+
+        @keyframes footRight {
+            0%, 100% { transform: translateX(0); }
+            50% { transform: translateX(2px); }
+        }
+
+        @keyframes bubbleFade {
+            0%, 40% { opacity: 1; }
+            50%, 60% { opacity: 0; }
+            70%, 100% { opacity: 1; }
+        }
+
+        .dock-bar {
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            margin-top: 10px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Features */
+        .features {
+            padding: 80px 20px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .features h2 {
+            text-align: center;
+            font-size: 32px;
+            margin-bottom: 48px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+        }
+
+        .feature-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 28px;
+            border: 1px solid #333355;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--orange);
+        }
+
+        .feature-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+
+        .feature-card h3 {
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+
+        .feature-card p {
+            font-size: 14px;
+            color: var(--text-dim);
+        }
+
+        /* Skins */
+        .skins {
+            padding: 60px 20px;
+            text-align: center;
+            background: var(--bg-light);
+        }
+
+        .skins h2 {
+            font-size: 32px;
+            margin-bottom: 16px;
+        }
+
+        .skins p {
+            color: var(--text-dim);
+            margin-bottom: 36px;
+        }
+
+        .skin-list {
+            display: flex;
+            justify-content: center;
+            gap: 32px;
+            flex-wrap: wrap;
+        }
+
+        .skin-item {
+            text-align: center;
+        }
+
+        .skin-preview {
+            width: 80px;
+            height: 80px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            margin-bottom: 8px;
+            border: 2px solid transparent;
+            transition: border-color 0.2s;
+        }
+
+        .skin-preview:hover {
+            border-color: var(--orange);
+        }
+
+        .skin-item span {
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+
+        /* Install */
+        .install {
+            padding: 80px 20px;
+            max-width: 700px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .install h2 {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+
+        .install > p {
+            color: var(--text-dim);
+            margin-bottom: 36px;
+        }
+
+        .install-code {
+            background: #111122;
+            border: 1px solid #333355;
+            border-radius: 12px;
+            padding: 20px 24px;
+            font-family: 'SF Mono', monospace;
+            font-size: 15px;
+            color: #66ddaa;
+            position: relative;
+            text-align: left;
+            margin-bottom: 16px;
+            overflow-x: auto;
+        }
+
+        .install-code .prompt {
+            color: var(--text-dim);
+            user-select: none;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: #333355;
+            border: none;
+            color: var(--text-dim);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.2s;
+        }
+
+        .copy-btn:hover {
+            background: var(--orange);
+            color: white;
+        }
+
+        .install-note {
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+
+        /* Colors */
+        .colors {
+            padding: 40px 20px 60px;
+            text-align: center;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .colors h3 {
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+
+        .color-dots {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .color-dot {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.1);
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 40px 20px;
+            border-top: 1px solid #333355;
+            color: var(--text-dim);
+            font-size: 14px;
+        }
+
+        .footer a {
+            color: var(--orange);
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-bottom: 12px;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .hero h1 { font-size: 32px; }
+            .hero p { font-size: 16px; }
+            .hero-ascii { font-size: 20px; }
+            .features h2, .skins h2, .install h2 { font-size: 24px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Hero -->
+<section class="hero">
+    <div class="hero-ascii">
+ ▐▛███▜▌<br>
+▝▜█████▛▘<br>
+  ▘▘ ▝▝
+    </div>
+    <h1><span>Claude</span>Pet</h1>
+    <p>Dock 위를 돌아다니는 Claude 데스크탑 펫. 작업 상태를 알려주고, 가끔 말도 걸어줍니다.</p>
+
+    <div class="hero-buttons">
+        <a href="#install" class="btn btn-primary">설치하기</a>
+        <a href="https://github.com/devTheKiwi/ClaudePet" class="btn btn-secondary">GitHub</a>
+    </div>
+
+    <div style="height: 20px;"></div>
+</section>
+
+<!-- Features -->
+<section class="features">
+    <h2>주요 기능</h2>
+    <div class="features-grid">
+        <div class="feature-card">
+            <div class="feature-icon">🔗</div>
+            <h3>Claude Code 실시간 연동</h3>
+            <p>Hook 기반으로 작업 시작, 완료, 권한 요청을 즉시 감지합니다.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">☕</div>
+            <h3>Claude Desktop 지원</h3>
+            <p>Desktop 앱 켜면 커피잔 든 펫이 등장! 사용 시간도 추적합니다.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">🪙</div>
+            <h3>토큰 사용량 추적</h3>
+            <p>세션/일일 토큰, 캐시 절약률, 마일스톤 알림까지.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">🔧</div>
+            <h3>도구별 상세 알림</h3>
+            <p>"명령어 실행 중...", "코드 수정 중..." 도구마다 다른 말풍선.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">⏱</div>
+            <h3>작업시간 트래커</h3>
+            <p>실제 작업 시간을 초 단위로 추적. 우클릭으로 세션/오늘 통계 확인.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">🎨</div>
+            <h3>스킨 시스템</h3>
+            <p>봄 에디션 벚꽃, 시즌별 스킨. 우클릭으로 변경 가능.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">👆</div>
+            <h3>상호작용</h3>
+            <p>클릭하면 반응, 더블클릭하면 점프, 우클릭으로 상태 확인.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">🔄</div>
+            <h3>자동 업데이트</h3>
+            <p>새 버전 나오면 Pet이 알려줌. PC 시작 시 자동 실행.</p>
+        </div>
+    </div>
+</section>
+
+<!-- Skins -->
+<section class="skins">
+    <h2>스킨</h2>
+    <p>우클릭 > 스킨에서 변경할 수 있어요</p>
+    <div class="skin-list">
+        <div class="skin-item">
+            <div class="skin-preview" style="background: #2a2a48;">🐛</div>
+            <span>기본</span>
+        </div>
+        <div class="skin-item">
+            <div class="skin-preview" style="background: #2d2233;">🌸</div>
+            <span>봄 에디션</span>
+        </div>
+        <div class="skin-item">
+            <div class="skin-preview" style="background: #2a2a48; opacity: 0.4;">🕶</div>
+            <span>여름 (예정)</span>
+        </div>
+        <div class="skin-item">
+            <div class="skin-preview" style="background: #2a2a48; opacity: 0.4;">🍂</div>
+            <span>가을 (예정)</span>
+        </div>
+        <div class="skin-item">
+            <div class="skin-preview" style="background: #2a2a48; opacity: 0.4;">❄️</div>
+            <span>겨울 (예정)</span>
+        </div>
+    </div>
+</section>
+
+<!-- Session Colors -->
+<section class="colors">
+    <h3>멀티 세션 - 세션마다 다른 색상의 펫</h3>
+    <div class="color-dots">
+        <div class="color-dot" style="background: #D97757;"></div>
+        <div class="color-dot" style="background: #6194D9;"></div>
+        <div class="color-dot" style="background: #66BF73;"></div>
+        <div class="color-dot" style="background: #A673D1;"></div>
+        <div class="color-dot" style="background: #D96B94;"></div>
+        <div class="color-dot" style="background: #52B8B3;"></div>
+    </div>
+</section>
+
+<!-- Install -->
+<section class="install" id="install">
+    <h2>설치</h2>
+    <p>터미널에 한 줄 붙여넣기. 끝!</p>
+
+    <div class="install-code">
+        <button class="copy-btn" onclick="copyInstall()">복사</button>
+        <span class="prompt">$ </span>curl -sL https://raw.githubusercontent.com/devTheKiwi/ClaudePet/main/remote-install.sh | bash
+    </div>
+
+    <p class="install-note">macOS 13+ / Apple Silicon / Xcode CLI Tools 자동 설치</p>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+    <div class="footer-links">
+        <a href="https://github.com/devTheKiwi/ClaudePet">GitHub</a>
+        <a href="https://github.com/devTheKiwi/ClaudePet/releases">Releases</a>
+        <a href="https://github.com/devTheKiwi">devTheKiwi</a>
+    </div>
+    <p>Made with Claude Code + Swift</p>
+</footer>
+
+<!-- 하단 고정 Pet 3마리 -->
+<script>
+function createPetSVG(bodyColor, footColor, type) {
+    let extras = '';
+    if (type === 'spring') {
+        // 벚꽃
+        extras = `
+            <circle cx="42" cy="14" r="3" fill="#FFB3C6" opacity="0.9"/>
+            <circle cx="46" cy="11" r="3" fill="#FFB3C6" opacity="0.9"/>
+            <circle cx="38" cy="11" r="3" fill="#FFB3C6" opacity="0.9"/>
+            <circle cx="40" cy="8" r="3" fill="#FFB3C6" opacity="0.9"/>
+            <circle cx="44" cy="8" r="3" fill="#FFB3C6" opacity="0.9"/>
+            <circle cx="42" cy="11" r="2.5" fill="#FFE066"/>
+            <line x1="42" y1="14" x2="43" y2="20" stroke="#66B35A" stroke-width="1.5"/>
+        `;
+    } else if (type === 'desktop') {
+        // 커피잔
+        extras = `
+            <rect x="46" y="34" width="9" height="10" rx="2" fill="#8C5A2E"/>
+            <rect x="47.5" y="35" width="6" height="3" rx="1" fill="#5C3310"/>
+            <path d="M55 37 Q58 37 58 40 Q58 43 55 43" stroke="#8C5A2E" stroke-width="1.5" fill="none"/>
+            <path d="M49 32 Q50 28 48 28" stroke="white" stroke-width="1" fill="none" opacity="0.6"/>
+            <path d="M52 32 Q53 28 51 28" stroke="white" stroke-width="1" fill="none" opacity="0.6"/>
+        `;
+    }
+    return `<svg width="64" height="64" viewBox="0 0 64 64" style="animation: petBounce 0.6s ease-in-out infinite;">
+        <rect class="pet-foot-l" x="18" y="52" width="8" height="10" rx="3" ry="3" fill="${footColor}"/>
+        <rect class="pet-foot-r" x="38" y="52" width="8" height="10" rx="3" ry="3" fill="${footColor}"/>
+        <rect x="12" y="24" width="40" height="30" rx="14" ry="12" fill="${bodyColor}"/>
+        <rect x="16" y="20" width="32" height="18" rx="12" ry="10" fill="${bodyColor}"/>
+        <ellipse cx="23.5" cy="28" rx="3.5" ry="4" fill="white"/>
+        <ellipse cx="39.5" cy="28" rx="3.5" ry="4" fill="white"/>
+        <ellipse cx="24.5" cy="28.5" rx="1.75" ry="1.75" fill="#262640" style="animation: petLook 8s ease-in-out infinite;"/>
+        <ellipse cx="40.5" cy="28.5" rx="1.75" ry="1.75" fill="#262640" style="animation: petLook 8s ease-in-out infinite;"/>
+        ${extras}
+    </svg>`;
+}
+
+function createPet(id, bodyColor, footColor, type, startX, dir, msgs) {
+    const el = document.createElement('div');
+    el.id = id;
+    el.style.cssText = 'position:fixed; bottom:0; z-index:9999; cursor:pointer;';
+
+    const bubble = document.createElement('div');
+    bubble.style.cssText = 'position:absolute; top:-36px; left:50%; transform:translateX(-50%); background:white; color:#333; padding:5px 12px; border-radius:10px; border:1px solid #d9d9d9; font-size:12px; font-weight:500; white-space:nowrap; box-shadow:0 1px 4px rgba(0,0,0,0.12); opacity:0; transition:opacity 0.3s; pointer-events:none;';
+    const svgWrapper = document.createElement('div');
+    svgWrapper.innerHTML = createPetSVG(bodyColor, footColor, type);
+    el.appendChild(svgWrapper);
+    el.appendChild(bubble);
+    document.body.appendChild(el);
+
+    let x = startX, direction = dir, speed = 0.8 + Math.random() * 0.8;
+
+    function showBubble() {
+        bubble.textContent = msgs[Math.floor(Math.random() * msgs.length)];
+        bubble.style.opacity = '1';
+        setTimeout(() => { bubble.style.opacity = '0'; }, 3500);
+    }
+
+    el.addEventListener('click', showBubble);
+
+    function walk() {
+        x += speed * direction;
+        const maxX = window.innerWidth - 70;
+        if (x > maxX) { x = maxX; direction = -1; }
+        if (x < 10) { x = 10; direction = 1; }
+        el.style.left = x + 'px';
+        svgWrapper.style.transform = direction < 0 ? 'scaleX(-1)' : 'scaleX(1)';
+        requestAnimationFrame(walk);
+    }
+
+    setInterval(() => { if (Math.random() < 0.3) direction *= -1; }, 3000 + Math.random() * 2000);
+    setTimeout(showBubble, 1000 + Math.random() * 3000);
+    setInterval(showBubble, 8000 + Math.random() * 4000);
+    walk();
+}
+
+// 3마리 스폰!
+createPet('pet-code', '#D97757', '#A6572E', 'basic',
+    window.innerWidth * 0.3, 1,
+    ["코드 수정 중...", "명령어 실행 중...", "파일 읽는 중...", "git commit 했어?", "작업 완료!"]
+);
+createPet('pet-spring', '#D97757', '#A6572E', 'spring',
+    window.innerWidth * 0.6, -1,
+    ["오늘도 화이팅!", "봄이 왔어! 🌸", "벚꽃 이쁘다~", "스킨 바꿔볼래?", "클릭해봐!"]
+);
+createPet('pet-desktop', '#D97757', '#A6572E', 'desktop',
+    window.innerWidth * 0.8, -1,
+    ["Desktop 켜짐! ☕", "커피 한잔 어때?", "30분 지났어!", "난 Desktop 펫이야!", "설치해볼래?"]
+);
+</script>
+
+<script>
+function copyInstall() {
+    const cmd = 'curl -sL https://raw.githubusercontent.com/devTheKiwi/ClaudePet/main/remote-install.sh | bash';
+    navigator.clipboard.writeText(cmd).then(() => {
+        const btn = document.querySelector('.copy-btn');
+        btn.textContent = '복사됨!';
+        setTimeout(() => btn.textContent = '복사', 2000);
+    });
+}
+</script>
+
+</body>
+</html>
