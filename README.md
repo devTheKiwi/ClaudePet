@@ -49,9 +49,16 @@ rm -f ~/Library/LaunchAgents/com.claudepet.app.plist
 
 ## 🪟 Windows 설치
 
-> 윈도우 버전은 현재 로컬 빌드만 지원합니다. 곧 설치 파일(.exe) 형태로도 배포할 예정이에요.
+**다운로드 (추천)**
 
-**로컬 빌드 (Node.js 18+ 필요)**
+[📥 ClaudePet 최신 버전 다운로드](https://github.com/devTheKiwi/ClaudePet/releases/latest)
+
+위 링크에서 `ClaudePet.Setup.X.Y.Z.exe` 받고 더블클릭 → 설치 마법사 진행 → 끝!
+시작 메뉴 등록, 자동 시작, Claude Code 연동까지 모두 자동입니다.
+
+> SmartScreen 경고가 뜨면 "자세히 → 실행" 을 눌러주세요. (코드 사인은 아직 안 했어요)
+
+**또는 소스 빌드 (개발자용)**
 ```bash
 git clone https://github.com/devTheKiwi/ClaudePet.git
 cd ClaudePet/windows
@@ -59,20 +66,19 @@ npm install
 npm start
 ```
 
-자세한 내용은 [windows/README.md](windows/README.md) 참고.
+자세한 빌드/구조는 [windows/README.md](windows/README.md) 참고.
 
 ### Requirements
 - Windows 10 (1809+) / Windows 11
-- Node.js 18 이상 (빌드 시에만 필요)
-- PowerShell 5.1+ (Windows 기본 내장)
+- 별도 의존성 없음 (Electron + Chromium 번들)
 
 ### Uninstall
+시작 → **앱** → **설치된 앱** → **ClaudePet** → **제거**
+
+또는 수동으로 흔적 정리:
 ```bash
-# Claude Code 연동 해제
 del "%USERPROFILE%\.claude\hooks\claudepet-hook.cmd"
 del "%USERPROFILE%\.claude\hooks\claudepet-hook.ps1"
-
-# 사용자 데이터 (시간 트래킹, 설정) 제거
 rmdir /s "%USERPROFILE%\.claudepet-windows"
 ```
 
