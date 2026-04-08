@@ -60,8 +60,16 @@ export class TokenTracker {
     return { ...EMPTY_USAGE };
   }
 
-  /** 오늘 전체 토큰 사용량 */
+  /** 오늘 전체 토큰 사용량 (30초 캐싱) */
+  private todayCache: TokenUsage | null = null;
+  private todayCacheTime = 0;
+
   todayUsage(): TokenUsage {
+    const now = Date.now();
+    if (this.todayCache && now - this.todayCacheTime < 30000) {
+      return this.todayCache;
+    }
+
     if (!fs.existsSync(this.projectsDir)) return { ...EMPTY_USAGE };
 
     const total: TokenUsage = { ...EMPTY_USAGE };
@@ -102,6 +110,8 @@ export class TokenTracker {
       }
     }
 
+    this.todayCache = total;
+    this.todayCacheTime = Date.now();
     return total;
   }
 

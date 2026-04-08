@@ -36,17 +36,18 @@ export class ClaudeMonitor {
   checkSessions(): SessionInfo[] {
     const sessions: SessionInfo[] = [];
 
-    let files: string[];
+    let files: fs.Dirent[];
     try {
-      files = fs.readdirSync(this.tmpDir);
+      files = fs.readdirSync(this.tmpDir, { withFileTypes: true })
+        .filter(f => f.isFile() && f.name.startsWith('claudepet-') && f.name.endsWith('.json'));
     } catch {
       return sessions;
     }
 
     const now = Math.floor(Date.now() / 1000);
 
-    for (const file of files) {
-      if (!file.startsWith('claudepet-') || !file.endsWith('.json')) continue;
+    for (const dirent of files) {
+      const file = dirent.name;
 
       const filePath = path.join(this.tmpDir, file);
       let data: any;
