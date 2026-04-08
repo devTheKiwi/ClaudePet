@@ -35,14 +35,29 @@ fi
 echo -e "${GREEN}  Swift & Git OK${NC}"
 
 # ---- 2. Clone & Build ----
-echo -e "${BOLD}[2/4] 다운로드 및 빌드 중...${NC}"
+echo -e "${BOLD}[2/5] 다운로드 중...${NC}"
 git clone --depth 1 --quiet "$REPO" "$TMP_DIR/ClaudePet"
 cd "$TMP_DIR/ClaudePet"
-swift build -c release 2>&1 | tail -1
+echo -e "${GREEN}  다운로드 완료!${NC}"
+
+echo -e "${BOLD}[3/5] 빌드 중...${NC}"
+swift build -c release 2>&1 | while IFS= read -r line; do
+    if [[ "$line" =~ \[([0-9]+)/([0-9]+)\] ]]; then
+        current="${BASH_REMATCH[1]}"
+        total="${BASH_REMATCH[2]}"
+        pct=$((current * 100 / total))
+        filled=$((pct / 5))
+        empty=$((20 - filled))
+        bar=$(printf '▓%.0s' $(seq 1 $filled 2>/dev/null))
+        emp=$(printf '░%.0s' $(seq 1 $empty 2>/dev/null))
+        printf "\r  ${bar}${emp} ${pct}%%"
+    fi
+done
+printf "\r  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ 100%%\n"
 echo -e "${GREEN}  빌드 완료!${NC}"
 
-# ---- 3. Create .app bundle ----
-echo -e "${BOLD}[3/4] 앱 설치 중...${NC}"
+# ---- 4. Create .app bundle ----
+echo -e "${BOLD}[4/5] 앱 설치 중...${NC}"
 
 mkdir -p "$APP_DIR"
 rm -rf "$APP_BUNDLE"
@@ -78,8 +93,8 @@ PLIST
 
 echo -e "${GREEN}  $APP_BUNDLE 설치 완료!${NC}"
 
-# ---- 4. 자동 시작 등록 ----
-echo -e "${BOLD}[4/5] 자동 시작 등록...${NC}"
+# ---- 5. 자동 시작 등록 ----
+echo -e "${BOLD}[5/6] 자동 시작 등록...${NC}"
 
 LAUNCH_AGENT_DIR="$HOME/Library/LaunchAgents"
 LAUNCH_AGENT="$LAUNCH_AGENT_DIR/com.claudepet.app.plist"
@@ -105,8 +120,8 @@ PLIST
 
 echo -e "${GREEN}  PC 시작 시 자동 실행 등록 완료!${NC}"
 
-# ---- 5. Cleanup & Launch ----
-echo -e "${BOLD}[5/5] 정리 및 실행...${NC}"
+# ---- 6. Cleanup & Launch ----
+echo -e "${BOLD}[6/6] 정리 및 실행...${NC}"
 rm -rf "$TMP_DIR"
 
 echo ""
