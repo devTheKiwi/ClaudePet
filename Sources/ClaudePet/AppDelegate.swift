@@ -73,6 +73,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var desktopWasRunning: Bool = false
     var desktopStartTime: Date?
     var lastTokenMilestone: Int = 0
+    var lastMilestoneDate: String = ""
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupStatusBar()
@@ -395,11 +396,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        // 자정에 리셋
-        let hour = Calendar.current.component(.hour, from: Date())
-        let minute = Calendar.current.component(.minute, from: Date())
-        if hour == 0 && minute == 0 {
+        // 날짜 바뀌면 리셋 (자정, 슬립 복귀 등 안전)
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM-dd"
+        let todayStr = fmt.string(from: Date())
+        if lastMilestoneDate != todayStr {
             lastTokenMilestone = 0
+            lastMilestoneDate = todayStr
         }
     }
 

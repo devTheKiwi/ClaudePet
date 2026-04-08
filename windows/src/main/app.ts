@@ -37,6 +37,7 @@ export class App {
   private tray!: TrayManager;
   private lastMinuteTrack = 0;
   private lastTokenMilestone = 0;
+  private lastMilestoneDate = '';
   private desktopWasRunning = false;
   private desktopStartTime: number | null = null;
 
@@ -376,10 +377,11 @@ export class App {
       }
     }
 
-    // 자정 리셋
-    const now = new Date();
-    if (now.getHours() === 0 && now.getMinutes() === 0) {
+    // 날짜 바뀌면 리셋 (자정, 슬립 복귀 등 안전)
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (this.lastMilestoneDate !== todayStr) {
       this.lastTokenMilestone = 0;
+      this.lastMilestoneDate = todayStr;
     }
   }
 
@@ -686,6 +688,8 @@ export class App {
       s.bubble.destroy();
     }
     this.sessions.clear();
+    const { app } = require('electron');
+    app.quit();
   }
 }
 
