@@ -127,19 +127,19 @@ export class ClaudeMonitor {
    */
   async isDesktopRunning(): Promise<boolean> {
     return new Promise((resolve) => {
-      const { exec } = require('child_process');
+      const { execFile } = require('child_process');
       const ps = `Get-CimInstance Win32_Process -Filter "name='claude.exe'" | ` +
                  `Where-Object { $_.ExecutablePath -like '*AnthropicClaude*' -or $_.ExecutablePath -like '*Anthropic Claude*' } | ` +
                  `Select-Object -First 1 -ExpandProperty ProcessId`;
-      exec(
-        `powershell -NoProfile -ExecutionPolicy Bypass -Command "${ps}"`,
+      execFile(
+        'powershell',
+        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', ps],
         { windowsHide: true },
         (err: any, stdout: string) => {
           if (err) {
             resolve(false);
             return;
           }
-          // 출력에 PID 숫자가 있으면 Desktop 실행 중
           const trimmed = (stdout || '').trim();
           resolve(/^\d+/.test(trimmed));
         }

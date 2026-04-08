@@ -36,8 +36,9 @@ try {
 }
 
 $sessionId = if ($data.session_id) { $data.session_id } else { '' }
-# session_id 가 없으면 이상한 unknown 펫이 생기지 않게 그냥 종료
+# session_id 가 없거나 안전하지 않은 문자가 포함되면 종료
 if ([string]::IsNullOrEmpty($sessionId)) { exit 0 }
+if ($sessionId -notmatch '^[a-zA-Z0-9_-]+$') { exit 0 }
 
 $cwd = if ($data.cwd) { $data.cwd } else { '' }
 $tool = if ($data.tool_name) { $data.tool_name } else { 'none' }

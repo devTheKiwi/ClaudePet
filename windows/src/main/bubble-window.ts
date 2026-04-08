@@ -155,10 +155,11 @@ export class BubbleWindow {
     tick();
   }
 
-  private sendShow(text: string, skin: PetSkin): void {
+  private sendShow(text: string, skin: PetSkin, retries = 0): void {
     if (!this.ready) {
-      // 살짝 기다렸다 다시 시도
-      setTimeout(() => this.sendShow(text, skin), 50);
+      if (retries < 20) {
+        setTimeout(() => this.sendShow(text, skin, retries + 1), 50);
+      }
       return;
     }
     if (this.window.isDestroyed()) return;
