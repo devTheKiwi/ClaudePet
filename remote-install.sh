@@ -41,20 +41,43 @@ cd "$TMP_DIR/ClaudePet"
 echo -e "${GREEN}  다운로드 완료!${NC}"
 
 echo -e "${BOLD}[3/5] 빌드 중...${NC}"
-swift build -c release 2>&1 | while IFS= read -r line; do
-    if [[ "$line" =~ \[([0-9]+)/([0-9]+)\] ]]; then
-        current="${BASH_REMATCH[1]}"
-        total="${BASH_REMATCH[2]}"
-        pct=$((current * 100 / total))
-        filled=$((pct / 5))
-        empty=$((20 - filled))
-        bar=$(printf '▓%.0s' $(seq 1 $filled 2>/dev/null))
-        emp=$(printf '░%.0s' $(seq 1 $empty 2>/dev/null))
-        printf "\r  ${bar}${emp} ${pct}%%"
+BUILD_LOG=$(mktemp)
+swift build -c release > "$BUILD_LOG" 2>&1 &
+BUILD_PID=$!
+
+# 프로그레스 표시
+while kill -0 $BUILD_PID 2>/dev/null; do
+    if [ -f "$BUILD_LOG" ]; then
+        LAST=$(grep -o '\[[0-9]*/[0-9]*\]' "$BUILD_LOG" | tail -1)
+        if [[ "$LAST" =~ \[([0-9]+)/([0-9]+)\] ]]; then
+            current="${BASH_REMATCH[1]}"
+            total="${BASH_REMATCH[2]}"
+            pct=$((current * 100 / total))
+            filled=$((pct / 5))
+            empty=$((20 - filled))
+            bar=$(printf '▓%.0s' $(seq 1 $filled 2>/dev/null))
+            emp=$(printf '░%.0s' $(seq 1 $empty 2>/dev/null))
+            printf "\r  ${bar}${emp} ${pct}%%"
+        fi
     fi
+    sleep 1
 done
+
+wait $BUILD_PID
+BUILD_EXIT=$?
+
+if [ $BUILD_EXIT -ne 0 ]; then
+    printf "\n"
+    echo -e "${RED}  빌드 실패! 에러:${NC}"
+    cat "$BUILD_LOG"
+    rm -f "$BUILD_LOG"
+    rm -rf "$TMP_DIR"
+    exit 1
+fi
+
 printf "\r  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ 100%%\n"
 echo -e "${GREEN}  빌드 완료!${NC}"
+rm -f "$BUILD_LOG"
 
 # ---- 4. Create .app bundle ----
 echo -e "${BOLD}[4/5] 앱 설치 중...${NC}"
