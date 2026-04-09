@@ -1,7 +1,9 @@
 import Cocoa
 
 class UpdateChecker {
-    let currentVersion = "2.5.0"
+    let currentVersion: String = {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"
+    }()
     private let repoAPI = "https://api.github.com/repos/devTheKiwi/ClaudePet/releases/latest"
 
     var latestVersion: String?

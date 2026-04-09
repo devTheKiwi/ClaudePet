@@ -59,6 +59,9 @@ echo -e "${GREEN}  빌드 완료!${NC}"
 # ---- 4. Create .app bundle ----
 echo -e "${BOLD}[4/5] 앱 설치 중...${NC}"
 
+# git 태그에서 버전 자동 추출
+APP_VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "0.0.0")
+
 mkdir -p "$APP_DIR"
 rm -rf "$APP_BUNDLE"
 mkdir -p "$APP_BUNDLE/Contents/MacOS"
@@ -66,7 +69,7 @@ mkdir -p "$APP_BUNDLE/Contents/Resources"
 
 cp ".build/release/ClaudePet" "$APP_BUNDLE/Contents/MacOS/ClaudePet"
 
-cat > "$APP_BUNDLE/Contents/Info.plist" << 'PLIST'
+cat > "$APP_BUNDLE/Contents/Info.plist" << PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -78,9 +81,9 @@ cat > "$APP_BUNDLE/Contents/Info.plist" << 'PLIST'
     <key>CFBundleName</key>
     <string>ClaudePet</string>
     <key>CFBundleVersion</key>
-    <string>2.0</string>
+    <string>${APP_VERSION}</string>
     <key>CFBundleShortVersionString</key>
-    <string>2.0</string>
+    <string>${APP_VERSION}</string>
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
     <key>LSUIElement</key>
