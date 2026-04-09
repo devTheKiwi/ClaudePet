@@ -38,6 +38,7 @@ echo -e "${GREEN}  Swift & Git OK${NC}"
 echo -e "${BOLD}[2/5] 다운로드 중...${NC}"
 git clone --depth 1 --quiet "$REPO" "$TMP_DIR/ClaudePet"
 cd "$TMP_DIR/ClaudePet"
+git fetch --tags --quiet 2>/dev/null
 echo -e "${GREEN}  다운로드 완료!${NC}"
 
 echo -e "${BOLD}[3/5] 빌드 중...${NC}"
