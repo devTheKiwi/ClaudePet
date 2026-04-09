@@ -22,7 +22,7 @@ class UpdateChecker {
 
     private func check() {
         guard let url = URL(string: repoAPI) else {
-            DispatchQueue.main.async { self.onResult?("업데이트 확인 실패") }
+            DispatchQueue.main.async { self.onResult?(L10n.isKorean ? "업데이트 확인 실패" : "Update check failed") }
             return
         }
 
@@ -33,7 +33,7 @@ class UpdateChecker {
                   let data = data,
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let latestTag = json["tag_name"] as? String else {
-                DispatchQueue.main.async { self.onResult?("업데이트 확인 실패") }
+                DispatchQueue.main.async { self.onResult?(L10n.isKorean ? "업데이트 확인 실패" : "Update check failed") }
                 return
             }
 
@@ -43,12 +43,12 @@ class UpdateChecker {
             if self.isNewer(latest: latest, current: self.currentVersion) {
                 self.updateAvailable = true
                 DispatchQueue.main.async {
-                    self.onResult?("새 버전 v\(latest) 나왔어! 우클릭→업데이트!")
+                    self.onResult?(L10n.updateAvailable(latest))
                 }
             } else {
                 self.updateAvailable = false
                 DispatchQueue.main.async {
-                    self.onResult?("최신 버전이에요! (v\(self.currentVersion))")
+                    self.onResult?(L10n.updateLatest(self.currentVersion))
                 }
             }
         }

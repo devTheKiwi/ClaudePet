@@ -50,11 +50,14 @@ class TimeTracker {
 
     func formatMinutes(_ mins: Int) -> String {
         if mins < 60 {
-            return "\(mins)분"
+            return L10n.isKorean ? "\(mins)분" : "\(mins)m"
         }
         let h = mins / 60
         let m = mins % 60
-        return m > 0 ? "\(h)시간 \(m)분" : "\(h)시간"
+        if L10n.isKorean {
+            return m > 0 ? "\(h)시간 \(m)분" : "\(h)시간"
+        }
+        return m > 0 ? "\(h)h \(m)m" : "\(h)h"
     }
 }
 
@@ -123,7 +126,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
             if let s = self?.sessions["default"] {
-                self?.showSpeech("안녕! 나는 Claude Pet이야!", for: s)
+                self?.showSpeech(L10n.greeting, for: s)
             }
         }
     }
@@ -144,7 +147,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem.separator())
 
         if sessions.isEmpty {
-            menu.addItem(NSMenuItem(title: "세션 없음", action: nil, keyEquivalent: ""))
+            menu.addItem(NSMenuItem(title: L10n.isKorean ? "세션 없음" : "No sessions", action: nil, keyEquivalent: ""))
         } else {
             for (_, session) in sessions.sorted(by: { $0.key < $1.key }) {
                 let dir = (session.cwd as NSString).lastPathComponent
@@ -162,7 +165,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(NSMenuItem.separator())
 
-        let quitItem = NSMenuItem(title: "종료", action: #selector(quitApp), keyEquivalent: "q")
+        let quitItem = NSMenuItem(title: L10n.menuQuit, action: #selector(quitApp), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
 
@@ -171,7 +174,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func runUpdate() {
         if let session = sessions.values.first {
-            showSpeech("업데이트 시작! 터미널을 확인해줘!", for: session)
+            showSpeech(L10n.updateStarted, for: session)
         }
         updateChecker.updateAvailable = false
         updateChecker.runUpdate()
@@ -197,7 +200,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 저장
         UserDefaults.standard.set(skinType.rawValue, forKey: "claudepet_skin")
 
-        let msg = skinType == .spring ? "봄이 왔어! 🌸" : "기본 스킨으로 돌아왔어!"
+        let msg = L10n.skinChanged(skinType == .spring)
         if let session = sessions.values.first {
             showSpeech(msg, for: session)
         }
@@ -215,17 +218,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             if id == "default" || id == "desktop" { continue }
             if let model = tokenTracker.modelForSession(id) {
                 let name = formatModelName(model)
-                let reactions = [
-                    "난 \(name)이야, 최고지!",
-                    "난 \(name)! 멋지지?",
-                    "난 \(name), 잘 부탁해!",
-                    "\(name) 등장! 반가워~",
-                    "난 \(name)이야, 믿고 맡겨!",
-                ]
-                return reactions.randomElement() ?? "난 \(name)이야!"
+                return L10n.modelReactions(name).randomElement() ?? "I'm \(name)!"
             }
         }
-        return "난 Claude야, 최고지!"
+        return L10n.modelReactions("Claude").randomElement() ?? "I'm Claude!"
     }
 
     private func formatModelName(_ model: String) -> String {
@@ -242,21 +238,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Tool Name Mapping
 
     private func toolMessage(for tool: String) -> String {
-        switch tool.lowercased() {
-        case "bash": return "명령어 실행 중..."
-        case "read": return "파일 읽는 중..."
-        case "edit": return "코드 수정 중..."
-        case "write": return "파일 작성 중..."
-        case "grep": return "코드 검색 중..."
-        case "glob": return "파일 찾는 중..."
-        case "agent": return "에이전트 작업 중..."
-        case "webcrawl", "webfetch": return "웹 검색 중..."
-        case "websearch": return "웹 검색 중..."
-        case "notebookedit": return "노트북 수정 중..."
-        case let t where t.contains("task"): return "작업 관리 중..."
-        case let t where t.contains("mcp"): return "플러그인 실행 중..."
-        default: return "작업 중..."
-        }
+        return L10n.toolMessage(for: tool)
     }
 
     // MARK: - Time Tracking
@@ -338,7 +320,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     continue
                 }
 
-                showSpeech("바이바이~", for: session)
+                showSpeech(L10n.bye, for: session)
                 let petWin = session.petWindow
                 let bubbleWin = session.speechBubble
                 sessions.removeValue(forKey: id)
@@ -388,7 +370,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     defaultSession.petWindow.petView.claudeStatus = info.status
 
                     let dir = (info.cwd as NSString).lastPathComponent
-                    showSpeech("\(dir.isEmpty ? "세션" : dir) 연결됨!", for: defaultSession)
+                    showSpeech("\(dir.isEmpty ? L10n.sessionConnected : dir + " " + L10n.sessionConnected)", for: defaultSession)
                 } else {
                     // 추가 세션 → 새 Pet 스폰
                     spawnPet(for: info)
@@ -409,14 +391,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let today = tokenTracker.todayUsage()
         let totalK = today.totalTokens / 1000
 
-        let milestones: [(Int, String)] = [
-            (10, "오늘 10K 토큰 사용!"),
-            (50, "오늘 50K 돌파!"),
-            (100, "오늘 100K! 열심히 일하는 중!"),
-            (200, "오늘 200K...많이 썼다!"),
-            (500, "오늘 500K!! 대작업이었구나!"),
-            (1000, "오늘 1M!!! 역대급이야!"),
-        ]
+        let milestones = L10n.tokenMilestones
 
         for (threshold, message) in milestones.reversed() {
             if totalK >= threshold && lastTokenMilestone < threshold {
@@ -463,15 +438,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     cwd: ""
                 )
                 sessions[desktopId] = session
-                showSpeech("Claude Desktop 왔다! 반가워!", for: session)
+                showSpeech(L10n.desktopHello, for: session)
             }
         } else if !isRunning && desktopWasRunning {
             // Desktop 꺼짐 → 반응
             if let session = sessions[desktopId] {
                 let usedMins = Int(Date().timeIntervalSince(desktopStartTime ?? Date()) / 60)
                 let usedSecs = Int(Date().timeIntervalSince(desktopStartTime ?? Date())) % 60
-                let timeText = String(format: "%02d분%02d초", usedMins, usedSecs)
-                showSpeech("\(timeText) 사용했어! 수고했어~", for: session)
+                let timeText = String(format: "%02d:%02d", usedMins, usedSecs)
+                showSpeech(L10n.desktopBye(timeText), for: session)
 
                 let petWin = session.petWindow
                 let bubbleWin = session.speechBubble
@@ -491,12 +466,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             // 30분마다 알림
             let mins = secs / 60
             if mins > 0 && mins % 30 == 0 && secs % 60 < 3 {
-                let messages = [
-                    "\(mins)분 지났어!",
-                    "\(mins)분이야! 스트레칭 어때?",
-                    "벌써 \(mins)분! 물 한잔 마셔!",
-                ]
-                if let msg = messages.randomElement() {
+                if let msg = L10n.desktopTimeAlert(mins).randomElement() {
                     showSpeech(msg, for: session)
                 }
             }
@@ -548,8 +518,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         sessions[info.sessionId] = session
 
         let dir = (info.cwd as NSString).lastPathComponent
-        let colorName = ["🟠", "🔵", "🟢", "🟣", "🩷", "🩵"][colorIndex]
-        showSpeech("\(colorName) \(dir.isEmpty ? "새 세션" : dir) 시작!", for: session)
+        showSpeech(L10n.sessionConnected.isEmpty ? dir : "\(dir.isEmpty ? L10n.sessionConnected : dir + " " + L10n.sessionConnected)", for: session)
     }
 
     // MARK: - Status Change
@@ -563,15 +532,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         switch new {
         case .working:
             if old != .working {
-                showSpeech("작업 시작!", for: session)
+                showSpeech(L10n.workStarted, for: session)
                 session.petWindow.petView.setState(.excited)
             }
         case .waitingForPermission:
-            showSpeech("⚠️ 권한이 필요해! 확인해줘!", for: session, persistent: true)
+            showSpeech(L10n.permissionNeeded, for: session, persistent: true)
             session.petWindow.petView.setState(.jumping)
         case .idle:
             if old == .working {
-                showSpeech("작업 완료!", for: session)
+                showSpeech(L10n.workDone, for: session)
                 session.petWindow.petView.setState(.happy)
             }
         case .notRunning:
@@ -582,33 +551,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Click Interactions
 
     private func handlePetClicked(session: PetSession) {
-        let dir = (session.cwd as NSString).lastPathComponent
         let clickMessages: [String]
 
         switch session.lastStatus {
         case .working:
-            clickMessages = [
-                "지금 \(dir)에서 열심히 일하는 중!",
-                "잠깐만, 거의 다 됐어!",
-                "Claude가 코드 작성 중~",
-            ]
+            clickMessages = L10n.clickWorking
         case .waitingForPermission:
-            clickMessages = [
-                "권한 승인이 필요해! 터미널 확인해줘!",
-                "나 좀 도와줘~ 권한이 필요해!",
-            ]
+            clickMessages = L10n.clickPermission
         case .idle:
-            clickMessages = [
-                "\(dir) 대기 중~ 뭐 시킬 거야?",
-                "나 건드리지 마~ 간지러워!",
-                "놀아줄 거야?",
-                "왜왜왜~ 뭐 필요해?",
-            ]
+            clickMessages = L10n.clickIdle
         case .notRunning:
-            clickMessages = [
-                "Claude Code가 꺼져있어~",
-                "나 혼자 심심해...",
-            ]
+            clickMessages = L10n.clickNotRunning
         }
 
         if let msg = clickMessages.randomElement() {
@@ -618,7 +571,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func handlePetDoubleClicked(session: PetSession) {
-        showSpeech("우왕! 신난다~!", for: session)
+        showSpeech(L10n.doubleClick, for: session)
         session.petWindow.petView.setState(.jumping)
     }
 
@@ -628,23 +581,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         let statusText: String
         switch session.lastStatus {
-        case .working: statusText = "🔵 작업 중"
-        case .waitingForPermission: statusText = "🟡 권한 대기"
-        case .idle: statusText = "🟢 대기 중"
-        case .notRunning: statusText = "⚫ 꺼짐"
+        case .working: statusText = L10n.menuWorking
+        case .waitingForPermission: statusText = L10n.menuPermission
+        case .idle: statusText = L10n.menuIdle
+        case .notRunning: statusText = L10n.menuOff
         }
         menu.addItem(NSMenuItem(title: "\(dir.isEmpty ? "Claude" : dir) - \(statusText)", action: nil, keyEquivalent: ""))
 
         // 세션 시간
         let sessionSecs = Int(Date().timeIntervalSince(session.sessionStart))
         let workSecs = session.workingSeconds
-        let sessionText = String(format: "%02d분%02d초", sessionSecs / 60, sessionSecs % 60)
-        let workText = String(format: "%02d분%02d초", workSecs / 60, workSecs % 60)
-        menu.addItem(NSMenuItem(title: "📊 세션 \(sessionText) (작업 \(workText))", action: nil, keyEquivalent: ""))
+        let sessionText = String(format: "%02d:%02d", sessionSecs / 60, sessionSecs % 60)
+        let workText = String(format: "%02d:%02d", workSecs / 60, workSecs % 60)
+        let sessionLabel = L10n.isKorean ? "📊 세션 \(sessionText) (작업 \(workText))" : "📊 Session \(sessionText) (Work \(workText))"
+        menu.addItem(NSMenuItem(title: sessionLabel, action: nil, keyEquivalent: ""))
 
         // 전체 작업 시간
         let totalMins = timeTracker.todayTotalMinutes()
-        menu.addItem(NSMenuItem(title: "📊 오늘 총 작업: \(timeTracker.formatMinutes(totalMins))", action: nil, keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: L10n.menuTodayWork(timeTracker.formatMinutes(totalMins)), action: nil, keyEquivalent: ""))
 
         menu.addItem(NSMenuItem.separator())
 
@@ -653,17 +607,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let todayUsage = tokenTracker.todayUsage()
 
         if sessionUsage.totalTokens > 0 {
-            menu.addItem(NSMenuItem(title: "🪙 세션: \(TokenUsage.formatTokens(sessionUsage.totalTokens)) (입력 \(TokenUsage.formatTokens(sessionUsage.inputTokens + sessionUsage.cacheReadTokens)) / 출력 \(TokenUsage.formatTokens(sessionUsage.outputTokens)))", action: nil, keyEquivalent: ""))
+            let inLabel = L10n.isKorean ? "입력" : "In"
+            let outLabel = L10n.isKorean ? "출력" : "Out"
+            menu.addItem(NSMenuItem(title: "🪙 \(L10n.isKorean ? "세션" : "Session"): \(TokenUsage.formatTokens(sessionUsage.totalTokens)) (\(inLabel) \(TokenUsage.formatTokens(sessionUsage.inputTokens + sessionUsage.cacheReadTokens)) / \(outLabel) \(TokenUsage.formatTokens(sessionUsage.outputTokens)))", action: nil, keyEquivalent: ""))
         }
         if todayUsage.totalTokens > 0 {
             let cacheRate = todayUsage.cacheReadTokens > 0 ? Int(Double(todayUsage.cacheReadTokens) / Double(todayUsage.cacheReadTokens + todayUsage.cacheCreationTokens + todayUsage.inputTokens) * 100) : 0
-            menu.addItem(NSMenuItem(title: "🪙 오늘 총: \(TokenUsage.formatTokens(todayUsage.totalTokens)) (캐시 \(cacheRate)%)", action: nil, keyEquivalent: ""))
+            let todayLabel = L10n.isKorean ? "🪙 오늘 총" : "🪙 Today"
+            menu.addItem(NSMenuItem(title: "\(todayLabel): \(TokenUsage.formatTokens(todayUsage.totalTokens)) (cache \(cacheRate)%)", action: nil, keyEquivalent: ""))
         }
 
         menu.addItem(NSMenuItem.separator())
 
         // 시간 표시 토글
-        let timerToggle = NSMenuItem(title: "작업시간 표시", action: #selector(toggleTimer), keyEquivalent: "")
+        let timerToggle = NSMenuItem(title: L10n.menuWorkTime, action: #selector(toggleTimer), keyEquivalent: "")
         timerToggle.target = self
         timerToggle.state = showTimerEnabled ? .on : .off
         menu.addItem(timerToggle)
@@ -671,7 +628,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 스킨 서브메뉴
         let skinMenu = NSMenu()
         for skinType in PetSkinType.allCases {
-            let item = NSMenuItem(title: skinType.rawValue, action: #selector(changeSkin(_:)), keyEquivalent: "")
+            let displayName = skinType == .spring ? L10n.skinSpring : L10n.skinBasic
+            let item = NSMenuItem(title: displayName, action: #selector(changeSkin(_:)), keyEquivalent: "")
             item.target = self
             item.representedObject = skinType.rawValue
             if session.petWindow.petView.skin == skinType {
@@ -679,21 +637,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
             skinMenu.addItem(item)
         }
-        let skinItem = NSMenuItem(title: "스킨", action: nil, keyEquivalent: "")
+        let skinItem = NSMenuItem(title: L10n.menuSkin, action: nil, keyEquivalent: "")
         skinItem.submenu = skinMenu
         menu.addItem(skinItem)
 
         menu.addItem(NSMenuItem.separator())
 
         if updateChecker.updateAvailable, let ver = updateChecker.latestVersion {
-            let updateItem = NSMenuItem(title: "🎉 v\(ver) 업데이트!", action: #selector(runUpdate), keyEquivalent: "")
+            let updateItem = NSMenuItem(title: "🎉 v\(ver) \(L10n.menuUpdate)", action: #selector(runUpdate), keyEquivalent: "")
             updateItem.target = self
             menu.addItem(updateItem)
         }
 
         menu.addItem(NSMenuItem.separator())
 
-        let quitItem = NSMenuItem(title: "종료", action: #selector(quitApp), keyEquivalent: "")
+        let quitItem = NSMenuItem(title: L10n.menuQuit, action: #selector(quitApp), keyEquivalent: "")
         quitItem.target = self
         menu.addItem(quitItem)
 
@@ -725,23 +683,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         guard let (_, session) = sessions.randomElement() else { return }
         guard session.petWindow.isVisible else { return }
 
-        let idleMessages = [
-            "오늘 코딩 많이 했어?",
-            "잠깐 스트레칭 하는 건 어때?",
-            "커피 한잔 어때요~",
-            "버그 없는 하루 되길!",
-            "git commit 했어?",
-            "오늘도 화이팅!",
-            "난 여기서 지켜보고 있을게~",
-            "세미콜론 빼먹지 않았지?",
-            modelMessage(),
-        ]
+        let idleMessages = L10n.idleMessages + [modelMessage()]
 
-        let workingMessages = [
-            "열심히 작업 중이야!",
-            "잘 되고 있어!",
-            "곧 끝날 거야!",
-        ]
+        let workingMessages = L10n.workingMessages
 
         let messages = session.lastStatus == .working ? workingMessages : idleMessages
         if let message = messages.randomElement() {
