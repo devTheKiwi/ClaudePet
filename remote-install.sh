@@ -67,7 +67,13 @@ rm -rf "$APP_BUNDLE"
 mkdir -p "$APP_BUNDLE/Contents/MacOS"
 mkdir -p "$APP_BUNDLE/Contents/Resources"
 
-cp ".build/release/ClaudePet" "$APP_BUNDLE/Contents/MacOS/ClaudePet"
+# Swift 버전에 따라 바이너리 경로가 다를 수 있음
+BINARY=$(find .build -path "*/release/ClaudePet" -not -path "*.dSYM*" -type f | head -1)
+if [ -z "$BINARY" ]; then
+    echo -e "${RED}  빌드 바이너리를 찾을 수 없습니다.${NC}"
+    exit 1
+fi
+cp "$BINARY" "$APP_BUNDLE/Contents/MacOS/ClaudePet"
 
 cat > "$APP_BUNDLE/Contents/Info.plist" << PLIST
 <?xml version="1.0" encoding="UTF-8"?>
