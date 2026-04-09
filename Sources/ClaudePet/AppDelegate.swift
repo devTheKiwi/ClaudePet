@@ -207,6 +207,38 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApplication.shared.terminate(nil)
     }
 
+    // MARK: - Model Message
+
+    private func modelMessage() -> String {
+        // 활성 세션에서 모델명 가져오기
+        for (id, _) in sessions {
+            if id == "default" || id == "desktop" { continue }
+            if let model = tokenTracker.modelForSession(id) {
+                let name = formatModelName(model)
+                let reactions = [
+                    "난 \(name)이야, 최고지!",
+                    "난 \(name)! 멋지지?",
+                    "난 \(name), 잘 부탁해!",
+                    "\(name) 등장! 반가워~",
+                    "난 \(name)이야, 믿고 맡겨!",
+                ]
+                return reactions.randomElement() ?? "난 \(name)이야!"
+            }
+        }
+        return "난 Claude야, 최고지!"
+    }
+
+    private func formatModelName(_ model: String) -> String {
+        // "claude-opus-4-6" → "Opus 4.6"
+        // "claude-sonnet-4-6" → "Sonnet 4.6"
+        let parts = model.replacingOccurrences(of: "claude-", with: "").split(separator: "-")
+        if parts.count >= 3 {
+            let name = String(parts[0]).capitalized
+            return "\(name) \(parts[1]).\(parts[2])"
+        }
+        return model.replacingOccurrences(of: "claude-", with: "").capitalized
+    }
+
     // MARK: - Tool Name Mapping
 
     private func toolMessage(for tool: String) -> String {
@@ -702,7 +734,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             "오늘도 화이팅!",
             "난 여기서 지켜보고 있을게~",
             "세미콜론 빼먹지 않았지?",
-            "난 Opus 4.6이야, 최고지!",
+            modelMessage(),
         ]
 
         let workingMessages = [

@@ -46,6 +46,31 @@ class TokenTracker {
         return TokenUsage()
     }
 
+    /// 세션의 모델명 감지
+    func modelForSession(_ sessionId: String) -> String? {
+        let fm = FileManager.default
+        guard let projectDirs = try? fm.contentsOfDirectory(atPath: claudeProjectsDir) else { return nil }
+
+        for dir in projectDirs {
+            let jsonlPath = "\(claudeProjectsDir)/\(dir)/\(sessionId).jsonl"
+            if fm.fileExists(atPath: jsonlPath),
+               let data = fm.contents(atPath: jsonlPath),
+               let content = String(data: data, encoding: .utf8) {
+                // 마지막부터 역순으로 model 필드 찾기
+                for line in content.components(separatedBy: "\n").reversed() {
+                    if line.contains("\"model\""),
+                       let lineData = line.data(using: .utf8),
+                       let json = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any],
+                       let message = json["message"] as? [String: Any],
+                       let model = message["model"] as? String {
+                        return model
+                    }
+                }
+            }
+        }
+        return nil
+    }
+
     /// 오늘 전체 토큰 사용량
     func todayUsage() -> TokenUsage {
         let fm = FileManager.default
