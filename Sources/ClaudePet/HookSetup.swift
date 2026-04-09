@@ -9,16 +9,31 @@ class HookSetup {
 
     /// 첫 실행 시 Hook 설정 여부를 확인하고 팝업 표시
     static func checkAndPrompt() {
-        // 이미 설정되어 있으면 스킵
-        if FileManager.default.fileExists(atPath: hookPath) { return }
-
         // Claude Code가 설치되어 있지 않으면 스킵
         if !FileManager.default.fileExists(atPath: claudeDir) { return }
 
-        // 팝업 표시
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            showSetupAlert()
+        // Hook 파일이 없으면 → 팝업으로 설치 안내
+        if !FileManager.default.fileExists(atPath: hookPath) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                showSetupAlert()
+            }
+            return
         }
+
+        // Hook 파일은 있지만 settings.json에 등록 안 됐으면 → 자동 복구
+        if !isHookRegistered() {
+            _ = updateSettings()
+        }
+    }
+
+    /// settings.json에 claudepet hook이 등록되어 있는지 확인
+    private static func isHookRegistered() -> Bool {
+        guard FileManager.default.fileExists(atPath: settingsPath),
+              let data = FileManager.default.contents(atPath: settingsPath),
+              let content = String(data: data, encoding: .utf8) else {
+            return false
+        }
+        return content.contains("claudepet-hook.sh")
     }
 
     private static func showSetupAlert() {
