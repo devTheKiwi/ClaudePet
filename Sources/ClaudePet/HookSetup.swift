@@ -22,8 +22,15 @@ class HookSetup {
 
         // Hook 파일은 있지만 settings.json에 등록 안 됐으면 → 자동 복구
         if !isHookRegistered() {
-            _ = updateSettings()
+            let success = updateSettings()
+            if success {
+                needsClaudeRestart = true
+            }
         }
+    }
+
+    /// Claude Code 재시작이 필요한지 여부
+    static var needsClaudeRestart = false
     }
 
     /// settings.json에 claudepet hook이 등록되어 있는지 확인

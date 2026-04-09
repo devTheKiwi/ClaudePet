@@ -1,7 +1,7 @@
 import Cocoa
 
 class UpdateChecker {
-    let currentVersion = "2.0.0"
+    let currentVersion = "2.5.0"
     private let repoAPI = "https://api.github.com/repos/devTheKiwi/ClaudePet/releases/latest"
 
     var latestVersion: String?

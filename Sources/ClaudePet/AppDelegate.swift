@@ -91,6 +91,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 첫 실행 시 Hook 설정 팝업
         HookSetup.checkAndPrompt()
 
+        // Hook 자동 복구 시 재시작 안내
+        if HookSetup.needsClaudeRestart {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+                if let session = self?.sessions.values.first {
+                    let msg = L10n.isKorean ? "Hook 복구됨! Claude Code를 재시작해주세요!" : "Hooks repaired! Please restart Claude Code!"
+                    self?.showSpeech(msg, for: session)
+                }
+            }
+        }
+
         // 자동 업데이트 체크
         updateChecker.onResult = { [weak self] msg in
             if let session = self?.sessions.values.first {
