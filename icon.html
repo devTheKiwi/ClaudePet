@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head><title>ClaudePet Icon</title></head>
+<body style="margin:40px; background:#f0f0f0; display:flex; gap:40px; align-items:start;">
+
+<!-- 512x512 아이콘 -->
+<div>
+<svg width="512" height="512" viewBox="0 0 512 512">
+  <!-- 배경: 둥근 사각형 -->
+  <rect width="512" height="512" rx="100" fill="#1a1a2e"/>
+
+  <!-- 감자 캐릭터 (중앙, 2.5배 스케일) -->
+  <g transform="translate(256, 240) scale(3.5)">
+    <!-- 발 -->
+    <rect x="-14" y="28" width="8" height="10" rx="3" fill="#A6572E"/>
+    <rect x="6" y="28" width="8" height="10" rx="3" fill="#A6572E"/>
+    <!-- 몸통 -->
+    <rect x="-20" y="0" width="40" height="30" rx="14" ry="12" fill="#D97757"/>
+    <!-- 머리 -->
+    <rect x="-16" y="-8" width="32" height="18" rx="12" ry="10" fill="#D97757"/>
+    <!-- 눈 흰자 -->
+    <ellipse cx="-8.5" cy="2" rx="3.5" ry="4" fill="white"/>
+    <ellipse cx="7.5" cy="2" rx="3.5" ry="4" fill="white"/>
+    <!-- 동공 -->
+    <ellipse cx="-7.5" cy="2.5" rx="1.75" ry="1.75" fill="#262640"/>
+    <ellipse cx="8.5" cy="2.5" rx="1.75" ry="1.75" fill="#262640"/>
+  </g>
+
+  <!-- ClaudePet 텍스트 -->
+  <text x="256" y="440" text-anchor="middle" font-family="-apple-system, sans-serif" font-size="48" font-weight="700" fill="white">
+    <tspan fill="#D97757">Claude</tspan><tspan fill="white">Pet</tspan>
+  </text>
+</svg>
+<p style="text-align:center; font-size:14px; color:#888;">512x512 (텍스트 포함)</p>
+</div>
+
+<!-- 텍스트 없는 버전 -->
+<div>
+<svg width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="100" fill="#1a1a2e"/>
+  <g transform="translate(256, 256) scale(4)">
+    <rect x="-14" y="28" width="8" height="10" rx="3" fill="#A6572E"/>
+    <rect x="6" y="28" width="8" height="10" rx="3" fill="#A6572E"/>
+    <rect x="-20" y="0" width="40" height="30" rx="14" ry="12" fill="#D97757"/>
+    <rect x="-16" y="-8" width="32" height="18" rx="12" ry="10" fill="#D97757"/>
+    <ellipse cx="-8.5" cy="2" rx="3.5" ry="4" fill="white"/>
+    <ellipse cx="7.5" cy="2" rx="3.5" ry="4" fill="white"/>
+    <ellipse cx="-7.5" cy="2.5" rx="1.75" ry="1.75" fill="#262640"/>
+    <ellipse cx="8.5" cy="2.5" rx="1.75" ry="1.75" fill="#262640"/>
+  </g>
+</svg>
+<p style="text-align:center; font-size:14px; color:#888;">512x512 (아이콘만)</p>
+</div>
+
+</body>
+</html>

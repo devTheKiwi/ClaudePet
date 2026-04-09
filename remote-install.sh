@@ -21,13 +21,13 @@ echo -e "${NC}"
 # ---- 1. Prerequisites ----
 echo -e "${BOLD}[1/4] 환경 확인...${NC}"
 
-if ! command -v swift &> /dev/null || ! command -v git &> /dev/null; then
+if ! swift --version &> /dev/null || ! git --version &> /dev/null; then
     echo -e "${YELLOW}  Xcode Command Line Tools 설치 중...${NC}"
     echo "  설치 팝업이 뜨면 '설치' 버튼을 눌러주세요!"
     xcode-select --install 2>/dev/null
     echo ""
     echo -e "${YELLOW}  설치가 완료될 때까지 기다리는 중...${NC}"
-    until command -v swift &> /dev/null && command -v git &> /dev/null; do
+    until swift --version &> /dev/null && git --version &> /dev/null; do
         sleep 5
     done
     echo -e "${GREEN}  Xcode Command Line Tools 설치 완료!${NC}"
