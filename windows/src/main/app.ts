@@ -12,6 +12,7 @@ import { TokenTracker, formatTokens, totalTokens } from './token-tracker';
 import { TimeTracker, UserSettings } from './time-tracker';
 import { UpdateChecker } from './update-checker';
 import { HookSetup } from './hook-setup';
+import * as S from './strings';
 
 interface PetSession {
   petWindow: PetWindow;
@@ -115,7 +116,7 @@ export class App {
     });
 
     setTimeout(() => {
-      this.showSpeech(session, '안녕! 나는 Claude Pet이야!');
+      this.showSpeech(session, S.greeting);
     }, 1500);
   }
 
@@ -153,7 +154,7 @@ export class App {
 
     const dir = lastPathComponent(info.cwd);
     const colorName = PALETTE_NAMES[colorIndex] || '';
-    this.showSpeech(session, `${colorName} ${dir || '새 세션'} 시작!`);
+    this.showSpeech(session, `${colorName} ${dir || S.newSession} ${S.sessionStart}`);
   }
 
   // ======================================================================
@@ -181,7 +182,7 @@ export class App {
         continue;
       }
 
-      this.showSpeech(session, '바이바이~');
+      this.showSpeech(session, S.bye);
       this.sessions.delete(id);
       setTimeout(() => {
         session.petWindow.destroy();
@@ -202,7 +203,7 @@ export class App {
 
         if (info.status === 'working' && info.tool !== 'none' && info.tool !== existing.lastTool) {
           existing.lastTool = info.tool;
-          this.showSpeech(existing, toolMessage(info.tool));
+          this.showSpeech(existing, S.toolMessage(info.tool));
         }
         if (info.status === 'waitingForPermission') {
           existing.petWindow.setPetState('jumping');
@@ -217,7 +218,7 @@ export class App {
           def.cwd = info.cwd;
           def.petWindow.sendState({ claudeStatus: info.status });
           const dir = lastPathComponent(info.cwd);
-          this.showSpeech(def, `${dir || '세션'} 연결됨!`);
+          this.showSpeech(def, `${dir || S.newSession} ${S.sessionConnected}`);
         } else {
           this.spawnPet(info);
         }
@@ -254,17 +255,17 @@ export class App {
     switch (newS) {
       case 'working':
         if (oldS !== 'working') {
-          this.showSpeech(session, '작업 시작!');
+          this.showSpeech(session, S.workStarted);
           session.petWindow.setPetState('excited');
         }
         break;
       case 'waitingForPermission':
-        this.showSpeech(session, '⚠️ 권한이 필요해! 확인해줘!', true);
+        this.showSpeech(session, S.permissionNeeded, true);
         session.petWindow.setPetState('jumping');
         break;
       case 'idle':
         if (oldS === 'working') {
-          this.showSpeech(session, '작업 완료!');
+          this.showSpeech(session, S.workDone);
           session.petWindow.setPetState('happy');
         }
         break;
@@ -308,7 +309,7 @@ export class App {
           petMode: 'desktop',
         };
         this.sessions.set(desktopId, session);
-        this.showSpeech(session, 'Claude Desktop 왔다! 반가워!');
+        this.showSpeech(session, S.desktopHello);
       }
     } else if (!isRunning && this.desktopWasRunning) {
       const session = this.sessions.get(desktopId);
@@ -316,8 +317,8 @@ export class App {
         const usedSecs = Math.floor((Date.now() - (this.desktopStartTime || Date.now())) / 1000);
         const mins = Math.floor(usedSecs / 60);
         const secs = usedSecs % 60;
-        const timeText = `${String(mins).padStart(2, '0')}분${String(secs).padStart(2, '0')}초`;
-        this.showSpeech(session, `${timeText} 사용했어! 수고했어~`);
+        const timeText = S.formatDuration(mins, secs);
+        this.showSpeech(session, S.desktopBye(timeText));
 
         this.sessions.delete(desktopId);
         setTimeout(() => {
@@ -335,11 +336,7 @@ export class App {
 
         const mins = Math.floor(secs / 60);
         if (mins > 0 && mins % 30 === 0 && secs % 60 < 3) {
-          const messages = [
-            `${mins}분 지났어!`,
-            `${mins}분이야! 스트레칭 어때?`,
-            `벌써 ${mins}분! 물 한잔 마셔!`,
-          ];
+          const messages = S.desktopTimeAlert(mins);
           this.showSpeech(session, messages[Math.floor(Math.random() * messages.length)]);
         }
       }
@@ -356,14 +353,7 @@ export class App {
     const today = this.tokenTracker.todayUsage();
     const totalK = Math.floor(totalTokens(today) / 1000);
 
-    const milestones: [number, string][] = [
-      [10, '오늘 10K 토큰 사용!'],
-      [50, '오늘 50K 돌파!'],
-      [100, '오늘 100K! 열심히 일하는 중!'],
-      [200, '오늘 200K...많이 썼다!'],
-      [500, '오늘 500K!! 대작업이었구나!'],
-      [1000, '오늘 1M!!! 역대급이야!'],
-    ];
+    const milestones: [number, string][] = S.tokenMilestones;
 
     for (let i = milestones.length - 1; i >= 0; i--) {
       const [threshold, message] = milestones[i];
@@ -439,19 +429,7 @@ export class App {
     const session = arr[Math.floor(Math.random() * arr.length)];
     if (!session.petWindow.window.isVisible()) return;
 
-    const idleMessages = [
-      '오늘 코딩 많이 했어?',
-      '잠깐 스트레칭 하는 건 어때?',
-      '커피 한잔 어때요~',
-      '버그 없는 하루 되길!',
-      'git commit 했어?',
-      '오늘도 화이팅!',
-      '난 여기서 지켜보고 있을게~',
-      '세미콜론 빼먹지 않았지?',
-      '난 Opus 4.6이야, 최고지!',
-    ];
-    const workingMessages = ['열심히 작업 중이야!', '잘 되고 있어!', '곧 끝날 거야!'];
-    const messages = session.lastStatus === 'working' ? workingMessages : idleMessages;
+    const messages = session.lastStatus === 'working' ? S.workingMessages : S.idleMessages;
     this.showSpeech(session, messages[Math.floor(Math.random() * messages.length)]);
   }
 
@@ -490,7 +468,7 @@ export class App {
     ipcMain.on('pet:double-click', (event) => {
       const session = this.findSessionByWebContents(event.sender.id);
       if (session) {
-        this.showSpeech(session, '우왕! 신난다~!');
+        this.showSpeech(session, S.doubleClick);
         session.petWindow.setPetState('jumping');
       }
     });
@@ -513,28 +491,16 @@ export class App {
     let messages: string[];
     switch (session.lastStatus) {
       case 'working':
-        messages = [
-          `지금 ${dir}에서 열심히 일하는 중!`,
-          '잠깐만, 거의 다 됐어!',
-          'Claude가 코드 작성 중~',
-        ];
+        messages = [S.clickWorkingDir(dir), ...S.clickWorking.slice(1)];
         break;
       case 'waitingForPermission':
-        messages = [
-          '권한 승인이 필요해! 터미널 확인해줘!',
-          '나 좀 도와줘~ 권한이 필요해!',
-        ];
+        messages = S.clickPermission;
         break;
       case 'idle':
-        messages = [
-          `${dir} 대기 중~ 뭐 시킬 거야?`,
-          '나 건드리지 마~ 간지러워!',
-          '놀아줄 거야?',
-          '왜왜왜~ 뭐 필요해?',
-        ];
+        messages = [S.clickIdleDir(dir), ...S.clickIdle];
         break;
       case 'notRunning':
-        messages = ['Claude Code가 꺼져있어~', '나 혼자 심심해...'];
+        messages = S.clickNotRunning;
         break;
     }
     this.showSpeech(session, messages[Math.floor(Math.random() * messages.length)]);
@@ -546,21 +512,21 @@ export class App {
     const dir = lastPathComponent(session.cwd) || 'Claude';
     const statusText = (() => {
       switch (session.lastStatus) {
-        case 'working': return '🔵 작업 중';
-        case 'waitingForPermission': return '🟡 권한 대기';
-        case 'idle': return '🟢 대기 중';
-        case 'notRunning': return '⚫ 꺼짐';
+        case 'working': return S.menuWorking;
+        case 'waitingForPermission': return S.menuPermission;
+        case 'idle': return S.menuIdle;
+        case 'notRunning': return S.menuOff;
       }
     })();
     menu.append(new MenuItem({ label: `${dir} - ${statusText}`, enabled: false }));
 
     const sessionSecs = Math.floor((Date.now() - session.sessionStart) / 1000);
-    const sessionText = `${String(Math.floor(sessionSecs / 60)).padStart(2, '0')}분${String(sessionSecs % 60).padStart(2, '0')}초`;
-    const workText = `${String(Math.floor(session.workingSeconds / 60)).padStart(2, '0')}분${String(session.workingSeconds % 60).padStart(2, '0')}초`;
-    menu.append(new MenuItem({ label: `📊 세션 ${sessionText} (작업 ${workText})`, enabled: false }));
+    const sessionText = S.formatDuration(Math.floor(sessionSecs / 60), sessionSecs % 60);
+    const workText = S.formatDuration(Math.floor(session.workingSeconds / 60), session.workingSeconds % 60);
+    menu.append(new MenuItem({ label: S.menuSessionWork(sessionText, workText), enabled: false }));
 
     const totalMins = this.timeTracker.todayTotalMinutes();
-    menu.append(new MenuItem({ label: `📊 오늘 총 작업: ${this.timeTracker.formatMinutes(totalMins)}`, enabled: false }));
+    menu.append(new MenuItem({ label: S.menuTodayWork(this.timeTracker.formatMinutes(totalMins)), enabled: false }));
 
     menu.append(new MenuItem({ type: 'separator' }));
 
@@ -570,7 +536,7 @@ export class App {
       const inp = sessionUsage.inputTokens + sessionUsage.cacheReadTokens;
       const out = sessionUsage.outputTokens;
       menu.append(new MenuItem({
-        label: `🪙 세션: ${formatTokens(totalTokens(sessionUsage))} (입력 ${formatTokens(inp)} / 출력 ${formatTokens(out)})`,
+        label: S.menuTokenSession(formatTokens(totalTokens(sessionUsage)), formatTokens(inp), formatTokens(out)),
         enabled: false,
       }));
     }
@@ -578,7 +544,7 @@ export class App {
       const total = todayUsage.cacheReadTokens + todayUsage.cacheCreationTokens + todayUsage.inputTokens;
       const cacheRate = total > 0 ? Math.floor((todayUsage.cacheReadTokens / total) * 100) : 0;
       menu.append(new MenuItem({
-        label: `🪙 오늘 총: ${formatTokens(totalTokens(todayUsage))} (캐시 ${cacheRate}%)`,
+        label: S.menuTokenToday(formatTokens(totalTokens(todayUsage)), cacheRate),
         enabled: false,
       }));
     }
@@ -586,7 +552,7 @@ export class App {
     menu.append(new MenuItem({ type: 'separator' }));
 
     menu.append(new MenuItem({
-      label: '작업시간 표시',
+      label: S.menuWorkTime,
       type: 'checkbox',
       checked: this.settings.showTimer,
       click: () => {
@@ -598,21 +564,19 @@ export class App {
     }));
 
     menu.append(new MenuItem({
-      label: 'PC 시작 시 자동 실행',
+      label: S.menuAutoLaunch,
       type: 'checkbox',
       checked: this.settings.autoLaunch,
       click: () => {
         this.settings.autoLaunch = !this.settings.autoLaunch;
         this.applyAutoLaunch();
-        const msg = this.settings.autoLaunch
-          ? '이제 PC 켤 때마다 나타날게! 🚀'
-          : '자동 실행 꺼졌어~ 다음엔 직접 켜줘!';
+        const msg = this.settings.autoLaunch ? S.autoLaunchOn : S.autoLaunchOff;
         this.showSpeech(session, msg);
       },
     }));
 
     const skinSubmenu = new Menu();
-    for (const [name, key] of [['기본', 'basic'], ['봄 에디션 🌸', 'spring']] as const) {
+    for (const [name, key] of [[S.skinBasic, 'basic'], [S.skinSpring, 'spring']] as const) {
       skinSubmenu.append(new MenuItem({
         label: name,
         type: 'radio',
@@ -622,26 +586,25 @@ export class App {
           for (const s of this.sessions.values()) {
             s.petWindow.sendState({ skin: key });
           }
-          const msg = key === 'spring' ? '봄이 왔어! 🌸' : '기본 스킨으로 돌아왔어!';
           const first = this.sessions.values().next().value;
-          if (first) this.showSpeech(first, msg);
+          if (first) this.showSpeech(first, S.skinChanged(key === 'spring'));
         },
       }));
     }
-    menu.append(new MenuItem({ label: '스킨', submenu: skinSubmenu }));
+    menu.append(new MenuItem({ label: S.menuSkin, submenu: skinSubmenu }));
 
     menu.append(new MenuItem({ type: 'separator' }));
 
     if (this.updateChecker.updateAvailable && this.updateChecker.latestVersion) {
       menu.append(new MenuItem({
-        label: `🎉 v${this.updateChecker.latestVersion} 업데이트!`,
+        label: `🎉 v${this.updateChecker.latestVersion} ${S.menuUpdate}`,
         click: () => this.updateChecker.runUpdate(),
       }));
       menu.append(new MenuItem({ type: 'separator' }));
     }
 
     menu.append(new MenuItem({
-      label: '종료',
+      label: S.menuQuit,
       click: () => this.quit(),
     }));
 
@@ -704,18 +667,3 @@ function lastPathComponent(p: string): string {
   return parts[parts.length - 1] || '';
 }
 
-function toolMessage(tool: string): string {
-  const t = tool.toLowerCase();
-  if (t === 'bash') return '명령어 실행 중...';
-  if (t === 'read') return '파일 읽는 중...';
-  if (t === 'edit') return '코드 수정 중...';
-  if (t === 'write') return '파일 작성 중...';
-  if (t === 'grep') return '코드 검색 중...';
-  if (t === 'glob') return '파일 찾는 중...';
-  if (t === 'agent') return '에이전트 작업 중...';
-  if (t.includes('webcrawl') || t.includes('webfetch') || t.includes('websearch')) return '웹 검색 중...';
-  if (t.includes('notebookedit')) return '노트북 수정 중...';
-  if (t.includes('task')) return '작업 관리 중...';
-  if (t.includes('mcp')) return '플러그인 실행 중...';
-  return '작업 중...';
-}

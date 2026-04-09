@@ -6,6 +6,7 @@
 import { Tray, Menu, MenuItem, nativeImage, app } from 'electron';
 import { generateTrayIconPng } from './icon-gen';
 import type { ClaudeStatus } from './claude-monitor';
+import * as S from './strings';
 
 export interface TraySessionEntry {
   sessionId: string;
@@ -31,7 +32,7 @@ export class TrayManager {
     menu.append(new MenuItem({ type: 'separator' }));
 
     if (sessions.length === 0) {
-      menu.append(new MenuItem({ label: '세션 없음', enabled: false }));
+      menu.append(new MenuItem({ label: S.menuNoSessions, enabled: false }));
     } else {
       const sorted = [...sessions].sort((a, b) => a.sessionId.localeCompare(b.sessionId));
       for (const s of sorted) {
@@ -46,7 +47,7 @@ export class TrayManager {
 
     menu.append(new MenuItem({ type: 'separator' }));
     menu.append(new MenuItem({
-      label: '종료',
+      label: S.menuQuit,
       click: () => {
         this.onQuit?.();
         app.quit();

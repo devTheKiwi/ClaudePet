@@ -11,6 +11,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { dialog } from 'electron';
+import * as S from './strings';
 
 const HOME = os.homedir();
 const CLAUDE_DIR = path.join(HOME, '.claude');
@@ -81,15 +82,10 @@ export class HookSetup {
 
     const response = await dialog.showMessageBox({
       type: 'info',
-      title: 'Claude Code 연동',
-      message: 'Claude Code 연동',
-      detail:
-        'Claude Code와 연동하면 작업 상태를 실시간으로 알려줘요!\n\n' +
-        '- 작업 시작/완료 알림\n' +
-        '- 권한 요청 알림\n' +
-        '- 세션별 상태 표시\n\n' +
-        '연동하시겠습니까?',
-      buttons: ['연동하기', '나중에'],
+      title: S.hookDialogTitle,
+      message: S.hookDialogMessage,
+      detail: S.hookDialogDetail,
+      buttons: [S.hookDialogConfirm, S.hookDialogLater],
       defaultId: 0,
       cancelId: 1,
     });
@@ -98,12 +94,10 @@ export class HookSetup {
       const ok = HookSetup.installHooks();
       await dialog.showMessageBox({
         type: ok ? 'info' : 'warning',
-        title: ok ? '연동 완료' : '연동 실패',
-        message: ok ? '연동 완료!' : '연동 실패',
-        detail: ok
-          ? 'Claude Code와 연동되었습니다.\nClaude Code를 새로 시작하면 적용됩니다.'
-          : 'Hook 설정 중 문제가 발생했습니다.',
-        buttons: ['확인'],
+        title: ok ? S.hookSuccessTitle : S.hookFailTitle,
+        message: ok ? S.hookSuccessMsg : S.hookFailMsg,
+        detail: ok ? S.hookSuccessDetail : S.hookFailDetail,
+        buttons: [S.hookDialogOk],
       });
     }
   }

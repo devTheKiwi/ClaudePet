@@ -6,6 +6,7 @@
  */
 
 import { shell } from 'electron';
+import * as S from './strings';
 
 const REPO_API = 'https://api.github.com/repos/devTheKiwi/ClaudePet/releases/latest';
 const RELEASES_PAGE = 'https://github.com/devTheKiwi/ClaudePet/releases/latest';
@@ -30,13 +31,13 @@ export class UpdateChecker {
         headers: { 'User-Agent': 'ClaudePet-Windows' },
       });
       if (!res.ok) {
-        this.onResult?.('업데이트 확인 실패');
+        this.onResult?.(S.updateFailed);
         return;
       }
       const json = (await res.json()) as { tag_name?: string };
       const tag = json.tag_name;
       if (!tag) {
-        this.onResult?.('업데이트 확인 실패');
+        this.onResult?.(S.updateFailed);
         return;
       }
       const latest = tag.replace(/^v/, '');
@@ -44,13 +45,13 @@ export class UpdateChecker {
 
       if (this.isNewer(latest, this.currentVersion)) {
         this.updateAvailable = true;
-        this.onResult?.(`새 버전 v${latest} 나왔어! 우클릭→업데이트!`);
+        this.onResult?.(S.updateAvailable(latest));
       } else {
         this.updateAvailable = false;
-        this.onResult?.(`최신 버전이에요! (v${this.currentVersion})`);
+        this.onResult?.(S.updateLatest(this.currentVersion));
       }
     } catch {
-      this.onResult?.('업데이트 확인 실패');
+      this.onResult?.(S.updateFailed);
     }
   }
 

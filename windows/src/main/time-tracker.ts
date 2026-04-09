@@ -6,6 +6,7 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import * as S from './strings';
 
 interface TimeStorage {
   date: string;
@@ -34,10 +35,7 @@ export class TimeTracker {
   }
 
   formatMinutes(mins: number): string {
-    if (mins < 60) return `${mins}분`;
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    return m > 0 ? `${h}시간 ${m}분` : `${h}시간`;
+    return S.formatMinutes(mins);
   }
 
   private ensureToday(): void {
