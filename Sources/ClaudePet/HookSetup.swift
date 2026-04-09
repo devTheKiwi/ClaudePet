@@ -31,7 +31,6 @@ class HookSetup {
 
     /// Claude Code 재시작이 필요한지 여부
     static var needsClaudeRestart = false
-    }
 
     /// settings.json에 claudepet hook이 등록되어 있는지 확인
     private static func isHookRegistered() -> Bool {
