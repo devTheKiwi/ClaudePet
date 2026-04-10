@@ -1,6 +1,6 @@
 {
   "name": "claudepet",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "description": "Taskbar 위를 돌아다니는 Claude Code 데스크탑 펫 (Windows)",
   "main": "dist/main/main.js",
   "scripts": {

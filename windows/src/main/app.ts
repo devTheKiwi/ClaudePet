@@ -429,8 +429,38 @@ export class App {
     const session = arr[Math.floor(Math.random() * arr.length)];
     if (!session.petWindow.window.isVisible()) return;
 
-    const messages = session.lastStatus === 'working' ? S.workingMessages : S.idleMessages;
+    const idleMessages = [...S.idleMessages, this.modelMessage()];
+    const messages = session.lastStatus === 'working' ? S.workingMessages : idleMessages;
     this.showSpeech(session, messages[Math.floor(Math.random() * messages.length)]);
+  }
+
+  // ======================================================================
+  // Model message (macOS modelMessage / formatModelName 포팅)
+  // ======================================================================
+
+  private modelMessage(): string {
+    for (const [id] of this.sessions) {
+      if (id === 'default' || id === 'desktop') continue;
+      const model = this.tokenTracker.modelForSession(id);
+      if (model) {
+        const name = this.formatModelName(model);
+        const reactions = S.modelReactions(name);
+        return reactions[Math.floor(Math.random() * reactions.length)];
+      }
+    }
+    const reactions = S.modelReactions('Claude');
+    return reactions[Math.floor(Math.random() * reactions.length)];
+  }
+
+  private formatModelName(model: string): string {
+    // "claude-opus-4-6" → "Opus 4.6"
+    const parts = model.replace('claude-', '').split('-');
+    if (parts.length >= 3) {
+      const name = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+      return `${name} ${parts[1]}.${parts[2]}`;
+    }
+    const raw = model.replace('claude-', '');
+    return raw.charAt(0).toUpperCase() + raw.slice(1);
   }
 
   // ======================================================================

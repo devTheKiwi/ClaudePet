@@ -142,4 +142,42 @@ export class TokenTracker {
 
     return usage;
   }
+
+  /** 세션의 모델명 감지 (JSONL에서 마지막 model 필드) */
+  modelForSession(sessionId: string): string | null {
+    if (!fs.existsSync(this.projectsDir)) return null;
+
+    let projectDirs: string[];
+    try {
+      projectDirs = fs.readdirSync(this.projectsDir);
+    } catch {
+      return null;
+    }
+
+    for (const dir of projectDirs) {
+      const jsonlPath = path.join(this.projectsDir, dir, `${sessionId}.jsonl`);
+      if (!fs.existsSync(jsonlPath)) continue;
+
+      let content: string;
+      try {
+        content = fs.readFileSync(jsonlPath, 'utf8');
+      } catch {
+        continue;
+      }
+
+      // 마지막부터 역순으로 model 필드 찾기
+      const lines = content.split('\n').reverse();
+      for (const line of lines) {
+        if (!line.includes('"model"')) continue;
+        try {
+          const json = JSON.parse(line);
+          const model = json?.message?.model;
+          if (typeof model === 'string') return model;
+        } catch {
+          continue;
+        }
+      }
+    }
+    return null;
+  }
 }
