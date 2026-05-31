@@ -2,26 +2,28 @@ import Foundation
 
 /// 시스템 언어 감지 기반 한/영 자동 전환
 struct L10n {
-    static let isKorean: Bool = {
-        let preferred = Locale.preferredLanguages.first ?? "en"
-        return preferred.hasPrefix("ko")
-    }()
+    /// 접근할 때마다 현재 시스템 언어를 다시 평가한다.
+    /// (static let 으로 캐싱하면 로그인 직후 자동실행 시점에 한 번 영어로 오판된 값이
+    ///  프로세스가 살아있는 내내 박제되어, 한국어 맥인데도 영어로 고정되는 문제가 있었음)
+    static var isKorean: Bool {
+        (Locale.preferredLanguages.first ?? "en").hasPrefix("ko")
+    }
 
     // MARK: - 인사
 
-    static let greeting = isKorean ? "안녕! 나는 Claude Pet이야!" : "Hi! I'm Claude Pet!"
+    static var greeting: String { isKorean ? "안녕! 나는 Claude Pet이야!" : "Hi! I'm Claude Pet!" }
 
     // MARK: - 상태 변경
 
-    static let workStarted = isKorean ? "작업 시작!" : "Work started!"
-    static let workDone = isKorean ? "작업 완료!" : "Work done!"
-    static let permissionNeeded = isKorean ? "⚠️ 권한이 필요해! 확인해줘!" : "⚠️ Permission needed! Check terminal!"
-    static let sessionConnected = isKorean ? "연결됨!" : "Connected!"
-    static let desktopHello = isKorean ? "Claude Desktop 왔다! 반가워!" : "Claude Desktop is here! Hi!"
+    static var workStarted: String { isKorean ? "작업 시작!" : "Work started!" }
+    static var workDone: String { isKorean ? "작업 완료!" : "Work done!" }
+    static var permissionNeeded: String { isKorean ? "⚠️ 권한이 필요해! 확인해줘!" : "⚠️ Permission needed! Check terminal!" }
+    static var sessionConnected: String { isKorean ? "연결됨!" : "Connected!" }
+    static var desktopHello: String { isKorean ? "Claude Desktop 왔다! 반가워!" : "Claude Desktop is here! Hi!" }
     static let desktopBye: (String) -> String = { time in
         isKorean ? "\(time) 사용했어! 수고했어~" : "Used \(time)! Good work~"
     }
-    static let bye = isKorean ? "바이바이~" : "Bye bye~"
+    static var bye: String { isKorean ? "바이바이~" : "Bye bye~" }
 
     // MARK: - 도구별 알림
 
@@ -44,37 +46,49 @@ struct L10n {
 
     // MARK: - 클릭 메시지
 
-    static let clickWorking = isKorean
-        ? ["지금 열심히 일하는 중!", "잠깐만, 거의 다 됐어!", "Claude가 코드 작성 중~"]
-        : ["Working hard right now!", "Almost done, wait!", "Claude is coding~"]
+    static var clickWorking: [String] {
+        isKorean
+            ? ["지금 열심히 일하는 중!", "잠깐만, 거의 다 됐어!", "Claude가 코드 작성 중~"]
+            : ["Working hard right now!", "Almost done, wait!", "Claude is coding~"]
+    }
 
-    static let clickPermission = isKorean
-        ? ["권한 승인이 필요해! 터미널 확인해줘!", "나 좀 도와줘~ 권한이 필요해!"]
-        : ["Permission needed! Check terminal!", "Help me~ I need permission!"]
+    static var clickPermission: [String] {
+        isKorean
+            ? ["권한 승인이 필요해! 터미널 확인해줘!", "나 좀 도와줘~ 권한이 필요해!"]
+            : ["Permission needed! Check terminal!", "Help me~ I need permission!"]
+    }
 
-    static let clickIdle = isKorean
-        ? ["뭐~ 심심해?", "나 건드리지 마~ 간지러워!", "놀아줄 거야?", "왜왜왜~ 뭐 필요해?"]
-        : ["Bored?", "Don't poke me~ ticklish!", "Wanna play?", "What do you need?"]
+    static var clickIdle: [String] {
+        isKorean
+            ? ["뭐~ 심심해?", "나 건드리지 마~ 간지러워!", "놀아줄 거야?", "왜왜왜~ 뭐 필요해?"]
+            : ["Bored?", "Don't poke me~ ticklish!", "Wanna play?", "What do you need?"]
+    }
 
-    static let clickNotRunning = isKorean
-        ? ["Claude Code가 꺼져있어~", "나 혼자 심심해..."]
-        : ["Claude Code is off~", "I'm lonely..."]
+    static var clickNotRunning: [String] {
+        isKorean
+            ? ["Claude Code가 꺼져있어~", "나 혼자 심심해..."]
+            : ["Claude Code is off~", "I'm lonely..."]
+    }
 
-    static let doubleClick = isKorean ? "우왕! 신난다~!" : "Woah! So fun~!"
+    static var doubleClick: String { isKorean ? "우왕! 신난다~!" : "Woah! So fun~!" }
 
     // MARK: - 랜덤 말걸기
 
-    static let idleMessages = isKorean
-        ? ["오늘 코딩 많이 했어?", "잠깐 스트레칭 하는 건 어때?", "커피 한잔 어때요~",
-           "버그 없는 하루 되길!", "git commit 했어?", "오늘도 화이팅!",
-           "난 여기서 지켜보고 있을게~", "세미콜론 빼먹지 않았지?"]
-        : ["Done much coding today?", "How about a stretch?", "Coffee break?",
-           "Bug-free day!", "Did you git commit?", "You got this!",
-           "I'm watching over you~", "Didn't forget a semicolon?"]
+    static var idleMessages: [String] {
+        isKorean
+            ? ["오늘 코딩 많이 했어?", "잠깐 스트레칭 하는 건 어때?", "커피 한잔 어때요~",
+               "버그 없는 하루 되길!", "git commit 했어?", "오늘도 화이팅!",
+               "난 여기서 지켜보고 있을게~", "세미콜론 빼먹지 않았지?"]
+            : ["Done much coding today?", "How about a stretch?", "Coffee break?",
+               "Bug-free day!", "Did you git commit?", "You got this!",
+               "I'm watching over you~", "Didn't forget a semicolon?"]
+    }
 
-    static let workingMessages = isKorean
-        ? ["열심히 작업 중이야!", "잘 되고 있어!", "곧 끝날 거야!"]
-        : ["Working hard!", "Going well!", "Almost done!"]
+    static var workingMessages: [String] {
+        isKorean
+            ? ["열심히 작업 중이야!", "잘 되고 있어!", "곧 끝날 거야!"]
+            : ["Working hard!", "Going well!", "Almost done!"]
+    }
 
     // MARK: - 모델 멘트
 
@@ -88,13 +102,15 @@ struct L10n {
 
     // MARK: - 토큰 마일스톤
 
-    static let tokenMilestones: [(Int, String)] = isKorean
-        ? [(10, "오늘 10K 토큰 사용!"), (50, "오늘 50K 돌파!"),
-           (100, "오늘 100K! 열심히 일하는 중!"), (200, "오늘 200K...많이 썼다!"),
-           (500, "오늘 500K!! 대작업이었구나!"), (1000, "오늘 1M!!! 역대급이야!")]
-        : [(10, "10K tokens today!"), (50, "50K reached!"),
-           (100, "100K! Working hard!"), (200, "200K... that's a lot!"),
-           (500, "500K!! Big project!"), (1000, "1M!!! That's legendary!")]
+    static var tokenMilestones: [(Int, String)] {
+        isKorean
+            ? [(10, "오늘 10K 토큰 사용!"), (50, "오늘 50K 돌파!"),
+               (100, "오늘 100K! 열심히 일하는 중!"), (200, "오늘 200K...많이 썼다!"),
+               (500, "오늘 500K!! 대작업이었구나!"), (1000, "오늘 1M!!! 역대급이야!")]
+            : [(10, "10K tokens today!"), (50, "50K reached!"),
+               (100, "100K! Working hard!"), (200, "200K... that's a lot!"),
+               (500, "500K!! Big project!"), (1000, "1M!!! That's legendary!")]
+    }
 
     // MARK: - Desktop 시간 알림
 
@@ -106,8 +122,8 @@ struct L10n {
 
     // MARK: - 스킨
 
-    static let skinBasic = isKorean ? "기본" : "Basic"
-    static let skinSpring = isKorean ? "봄 에디션 🌸" : "Spring 🌸"
+    static var skinBasic: String { isKorean ? "기본" : "Basic" }
+    static var skinSpring: String { isKorean ? "봄 에디션 🌸" : "Spring 🌸" }
     static let skinChanged: (Bool) -> String = { isSpring in
         isSpring
             ? (isKorean ? "봄이 왔어! 🌸" : "Spring is here! 🌸")
@@ -116,14 +132,14 @@ struct L10n {
 
     // MARK: - 우클릭 메뉴
 
-    static let menuWorking = isKorean ? "🔵 작업 중" : "🔵 Working"
-    static let menuPermission = isKorean ? "🟡 권한 대기" : "🟡 Permission"
-    static let menuIdle = isKorean ? "🟢 대기 중" : "🟢 Idle"
-    static let menuOff = isKorean ? "⚫ 꺼짐" : "⚫ Off"
-    static let menuWorkTime = isKorean ? "작업시간 표시" : "Show work time"
-    static let menuSkin = isKorean ? "스킨" : "Skins"
-    static let menuUpdate = isKorean ? "업데이트!" : "Update!"
-    static let menuQuit = isKorean ? "종료" : "Quit"
+    static var menuWorking: String { isKorean ? "🔵 작업 중" : "🔵 Working" }
+    static var menuPermission: String { isKorean ? "🟡 권한 대기" : "🟡 Permission" }
+    static var menuIdle: String { isKorean ? "🟢 대기 중" : "🟢 Idle" }
+    static var menuOff: String { isKorean ? "⚫ 꺼짐" : "⚫ Off" }
+    static var menuWorkTime: String { isKorean ? "작업시간 표시" : "Show work time" }
+    static var menuSkin: String { isKorean ? "스킨" : "Skins" }
+    static var menuUpdate: String { isKorean ? "업데이트!" : "Update!" }
+    static var menuQuit: String { isKorean ? "종료" : "Quit" }
     static let menuTodayWork: (String) -> String = { time in
         isKorean ? "📊 오늘 총 작업: \(time)" : "📊 Today: \(time)"
     }
@@ -136,6 +152,6 @@ struct L10n {
     static let updateLatest: (String) -> String = { ver in
         isKorean ? "최신 버전이에요! (v\(ver))" : "You're up to date! (v\(ver))"
     }
-    static let updateStarted = isKorean ? "업데이트 시작! 터미널을 확인해줘!" : "Updating! Check terminal!"
-    static let updateChecking = isKorean ? "업데이트 확인 중..." : "Checking updates..."
+    static var updateStarted: String { isKorean ? "업데이트 시작! 터미널을 확인해줘!" : "Updating! Check terminal!" }
+    static var updateChecking: String { isKorean ? "업데이트 확인 중..." : "Checking updates..." }
 }

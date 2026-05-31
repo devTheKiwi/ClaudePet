@@ -71,6 +71,9 @@ if [ $BUILD_EXIT -ne 0 ]; then
     printf "\n"
     echo -e "${RED}  빌드 실패! 에러:${NC}"
     cat "$BUILD_LOG"
+    echo ""
+    echo -e "${YELLOW}  'You have not agreed to the Xcode license agreements' 가 보이면 아래를 먼저 실행하세요:${NC}"
+    echo "    sudo xcodebuild -license accept"
     rm -f "$BUILD_LOG"
     rm -rf "$TMP_DIR"
     exit 1
@@ -166,6 +169,14 @@ echo "  실행: open ~/Applications/ClaudePet.app"
 echo "  종료: 메뉴바 🐛 > 종료"
 echo "  PC 시작 시 자동 실행됩니다!"
 echo ""
+
+# 기존 실행 중인 ClaudePet 종료 (open은 이미 실행 중이면 새 빌드를 띄우지 않고
+# 옛 프로세스만 활성화하므로, 재설치가 적용되려면 먼저 종료해야 함)
+if pgrep -f "ClaudePet.app/Contents/MacOS/ClaudePet" > /dev/null 2>&1; then
+    osascript -e 'quit app "ClaudePet"' 2>/dev/null || true
+    pkill -f "ClaudePet.app/Contents/MacOS/ClaudePet" 2>/dev/null || true
+    sleep 1
+fi
 
 open "$APP_BUNDLE"
 echo -e "${GREEN}  ClaudePet이 시작되었습니다!${NC}"

@@ -47,7 +47,18 @@ echo -e "${GREEN}  Swift $(swift --version 2>&1 | head -1 | grep -o 'version [0-
 # ---- 2. Build ----
 echo -e "${BOLD}[2/5] 빌드 중...${NC}"
 cd "$SCRIPT_DIR"
-swift build -c release 2>&1 | tail -1
+BUILD_LOG=$(mktemp)
+if ! swift build -c release > "$BUILD_LOG" 2>&1; then
+    echo -e "${RED}  빌드 실패! 에러 내용:${NC}"
+    cat "$BUILD_LOG"
+    rm -f "$BUILD_LOG"
+    echo ""
+    echo -e "${YELLOW}  'You have not agreed to the Xcode license agreements' 가 보이면 아래를 먼저 실행하세요:${NC}"
+    echo "    sudo xcodebuild -license accept"
+    echo "  그 후 다시 ./install.sh 를 실행해주세요."
+    exit 1
+fi
+rm -f "$BUILD_LOG"
 echo -e "${GREEN}  빌드 완료!${NC}"
 
 # ---- 3. Create .app bundle ----
@@ -238,6 +249,15 @@ echo "    $APP_BUNDLE/Contents/MacOS/ClaudePet"
 echo ""
 echo "  종료: 메뉴바의 🐛 아이콘 > 종료"
 echo ""
+
+# 기존 실행 중인 ClaudePet 종료 (open은 이미 실행 중이면 새 빌드를 띄우지 않고
+# 옛 프로세스만 활성화하므로, 재설치가 적용되려면 먼저 종료해야 함)
+if pgrep -f "ClaudePet.app/Contents/MacOS/ClaudePet" > /dev/null 2>&1; then
+    echo -e "${YELLOW}  기존 ClaudePet 종료 중...${NC}"
+    osascript -e 'quit app "ClaudePet"' 2>/dev/null || true
+    pkill -f "ClaudePet.app/Contents/MacOS/ClaudePet" 2>/dev/null || true
+    sleep 1
+fi
 
 # 바로 실행할지 묻기
 read -p "  지금 바로 실행할까요? (y/n) " -n 1 -r
