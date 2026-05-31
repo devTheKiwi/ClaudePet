@@ -86,8 +86,11 @@ rm -f "$BUILD_LOG"
 # ---- 4. Create .app bundle ----
 echo -e "${BOLD}[4/5] 앱 설치 중...${NC}"
 
-# git 태그에서 버전 자동 추출
-APP_VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "0.0.0")
+# 버전: 원격 태그에서 직접 추출
+# (--depth 1 shallow clone라 git describe가 실패 → 빈 버전이 박혀 '업데이트' 무한알림을 유발하던 버그)
+APP_VERSION=$(git ls-remote --tags origin 2>/dev/null | sed -n 's#.*refs/tags/v\([0-9][0-9.]*\)$#\1#p' | sort -V | tail -1)
+[ -z "$APP_VERSION" ] && APP_VERSION=$(git tag -l 'v*' 2>/dev/null | sort -V | tail -1 | sed 's/^v//')
+[ -z "$APP_VERSION" ] && APP_VERSION="0.0.0"
 
 mkdir -p "$APP_DIR"
 rm -rf "$APP_BUNDLE"
@@ -169,6 +172,21 @@ echo "  실행: open ~/Applications/ClaudePet.app"
 echo "  종료: 메뉴바 🐛 > 종료"
 echo "  PC 시작 시 자동 실행됩니다!"
 echo ""
+
+# ---- 언어 선택 ----
+echo -e "${BOLD}언어를 선택하세요 / Choose language:${NC}"
+echo "  1) 시스템 따름 (기본) / Follow system"
+echo "  2) 한국어"
+echo "  3) English"
+LANG_CHOICE=""
+read -r -p "  선택 (1/2/3, 엔터=1): " LANG_CHOICE < /dev/tty 2>/dev/null || LANG_CHOICE=""
+echo
+case "$LANG_CHOICE" in
+    2) defaults write com.claudepet.app claudepet_language -string "ko"; echo -e "${GREEN}  → 한국어${NC}" ;;
+    3) defaults write com.claudepet.app claudepet_language -string "en"; echo -e "${GREEN}  → English${NC}" ;;
+    *) defaults delete com.claudepet.app claudepet_language 2>/dev/null || true; echo -e "${GREEN}  → 시스템 언어 따름${NC}" ;;
+esac
+echo "  (나중에 펫 우클릭 → 언어 메뉴에서 바꿀 수 있어요)"
 
 # 기존 실행 중인 ClaudePet 종료 (open은 이미 실행 중이면 새 빌드를 띄우지 않고
 # 옛 프로세스만 활성화하므로, 재설치가 적용되려면 먼저 종료해야 함)

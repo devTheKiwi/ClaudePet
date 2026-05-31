@@ -72,8 +72,13 @@ mkdir -p "$APP_BUNDLE/Contents/Resources"
 # Binary 복사
 cp ".build/release/$APP_NAME" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 
+# 버전: git 태그에서 자동 추출 (설치본 버전을 GitHub 최신 릴리스와 일치 → '업데이트' 무한알림 방지)
+APP_VERSION=$(git tag -l 'v*' 2>/dev/null | sort -V | tail -1 | sed 's/^v//')
+[ -z "$APP_VERSION" ] && APP_VERSION=$(git ls-remote --tags origin 2>/dev/null | sed -n 's#.*refs/tags/v\([0-9][0-9.]*\)$#\1#p' | sort -V | tail -1)
+[ -z "$APP_VERSION" ] && APP_VERSION="2.0"
+
 # Info.plist
-cat > "$APP_BUNDLE/Contents/Info.plist" << 'PLIST'
+cat > "$APP_BUNDLE/Contents/Info.plist" << PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -85,9 +90,9 @@ cat > "$APP_BUNDLE/Contents/Info.plist" << 'PLIST'
     <key>CFBundleName</key>
     <string>ClaudePet</string>
     <key>CFBundleVersion</key>
-    <string>2.0</string>
+    <string>${APP_VERSION}</string>
     <key>CFBundleShortVersionString</key>
-    <string>2.0</string>
+    <string>${APP_VERSION}</string>
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
     <key>LSUIElement</key>
@@ -249,6 +254,21 @@ echo "    $APP_BUNDLE/Contents/MacOS/ClaudePet"
 echo ""
 echo "  종료: 메뉴바의 🐛 아이콘 > 종료"
 echo ""
+
+# ---- 언어 선택 ----
+echo -e "${BOLD}언어를 선택하세요 / Choose language:${NC}"
+echo "  1) 시스템 따름 (기본) / Follow system"
+echo "  2) 한국어"
+echo "  3) English"
+LANG_CHOICE=""
+read -r -p "  선택 (1/2/3, 엔터=1): " LANG_CHOICE < /dev/tty 2>/dev/null || LANG_CHOICE=""
+echo
+case "$LANG_CHOICE" in
+    2) defaults write com.claudepet.app claudepet_language -string "ko"; echo -e "${GREEN}  → 한국어${NC}" ;;
+    3) defaults write com.claudepet.app claudepet_language -string "en"; echo -e "${GREEN}  → English${NC}" ;;
+    *) defaults delete com.claudepet.app claudepet_language 2>/dev/null || true; echo -e "${GREEN}  → 시스템 언어 따름${NC}" ;;
+esac
+echo "  (나중에 펫 우클릭 → 언어 메뉴에서 바꿀 수 있어요)"
 
 # 기존 실행 중인 ClaudePet 종료 (open은 이미 실행 중이면 새 빌드를 띄우지 않고
 # 옛 프로세스만 활성화하므로, 재설치가 적용되려면 먼저 종료해야 함)

@@ -60,6 +60,8 @@ class UpdateChecker {
     private func isNewer(latest: String, current: String) -> Bool {
         let l = latest.split(separator: ".").compactMap { Int($0) }
         let c = current.split(separator: ".").compactMap { Int($0) }
+        // 현재 버전을 못 읽으면(빈 값/파싱 실패) 업데이트 알림을 띄우지 않음 — 무한 알림 방지
+        if l.isEmpty || c.isEmpty { return false }
         for i in 0..<max(l.count, c.count) {
             let lv = i < l.count ? l[i] : 0
             let cv = i < c.count ? c[i] : 0

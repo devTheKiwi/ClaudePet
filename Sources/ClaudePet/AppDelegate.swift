@@ -153,7 +153,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func rebuildStatusMenu() {
         let menu = NSMenu()
-        menu.addItem(NSMenuItem(title: "Claude Pet v2.0", action: nil, keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "Claude Pet v\(updateChecker.currentVersion)", action: nil, keyEquivalent: ""))
         menu.addItem(NSMenuItem.separator())
 
         if sessions.isEmpty {
@@ -213,6 +213,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let msg = L10n.skinChanged(skinType == .spring)
         if let session = sessions.values.first {
             showSpeech(msg, for: session)
+        }
+    }
+
+    @objc private func changeLanguage(_ sender: NSMenuItem) {
+        guard let value = sender.representedObject as? String else { return }
+        // "system"이면 키 제거(자동 감지로 복귀), 아니면 "ko"/"en" 저장
+        if value == "system" {
+            UserDefaults.standard.removeObject(forKey: "claudepet_language")
+        } else {
+            UserDefaults.standard.set(value, forKey: "claudepet_language")
+        }
+        // 메뉴/말풍선은 접근 시점에 L10n을 다시 읽으므로 즉시 반영됨
+        rebuildStatusMenu()
+        if let session = sessions.values.first {
+            showSpeech(L10n.languageChanged, for: session)
         }
     }
 
@@ -650,6 +665,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let skinItem = NSMenuItem(title: L10n.menuSkin, action: nil, keyEquivalent: "")
         skinItem.submenu = skinMenu
         menu.addItem(skinItem)
+
+        // 언어 서브메뉴
+        let langMenu = NSMenu()
+        let currentLang = UserDefaults.standard.string(forKey: "claudepet_language") ?? "system"
+        let langOptions: [(value: String, name: String)] = [
+            ("system", L10n.langSystem),
+            ("ko", L10n.langKorean),
+            ("en", L10n.langEnglish),
+        ]
+        for opt in langOptions {
+            let item = NSMenuItem(title: opt.name, action: #selector(changeLanguage(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = opt.value
+            if currentLang == opt.value { item.state = .on }
+            langMenu.addItem(item)
+        }
+        let langItem = NSMenuItem(title: L10n.menuLanguage, action: nil, keyEquivalent: "")
+        langItem.submenu = langMenu
+        menu.addItem(langItem)
 
         menu.addItem(NSMenuItem.separator())
 

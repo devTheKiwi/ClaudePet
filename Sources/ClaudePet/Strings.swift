@@ -2,11 +2,21 @@ import Foundation
 
 /// 시스템 언어 감지 기반 한/영 자동 전환
 struct L10n {
-    /// 접근할 때마다 현재 시스템 언어를 다시 평가한다.
-    /// (static let 으로 캐싱하면 로그인 직후 자동실행 시점에 한 번 영어로 오판된 값이
-    ///  프로세스가 살아있는 내내 박제되어, 한국어 맥인데도 영어로 고정되는 문제가 있었음)
+    /// 사용자가 직접 고른 언어("ko"/"en"). 없으면 nil("system" 취급 → 자동 감지).
+    static var languageOverride: String? {
+        let v = UserDefaults.standard.string(forKey: "claudepet_language")
+        return (v == "ko" || v == "en") ? v : nil
+    }
+
+    /// 사용자가 우클릭 메뉴/설치 시 언어를 골랐으면 그걸 따르고, 아니면 시스템 언어를 자동 감지한다.
+    /// 접근할 때마다 다시 평가하므로(computed var) 로그인 직후 자동실행 시점에 영어로
+    /// 오판된 값이 프로세스 내내 박제되던 문제도 함께 해결됨.
     static var isKorean: Bool {
-        (Locale.preferredLanguages.first ?? "en").hasPrefix("ko")
+        switch languageOverride {
+        case "ko": return true
+        case "en": return false
+        default: return (Locale.preferredLanguages.first ?? "en").hasPrefix("ko")
+        }
     }
 
     // MARK: - 인사
@@ -140,6 +150,14 @@ struct L10n {
     static var menuSkin: String { isKorean ? "스킨" : "Skins" }
     static var menuUpdate: String { isKorean ? "업데이트!" : "Update!" }
     static var menuQuit: String { isKorean ? "종료" : "Quit" }
+
+    // MARK: - 언어 선택
+
+    static var menuLanguage: String { isKorean ? "언어" : "Language" }
+    static var langSystem: String { isKorean ? "시스템 따름" : "Follow System" }
+    static let langKorean: String = "한국어"
+    static let langEnglish: String = "English"
+    static var languageChanged: String { isKorean ? "한국어로 바꿨어! 🇰🇷" : "Switched to English! 🇺🇸" }
     static let menuTodayWork: (String) -> String = { time in
         isKorean ? "📊 오늘 총 작업: \(time)" : "📊 Today: \(time)"
     }
