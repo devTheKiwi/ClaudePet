@@ -12,32 +12,33 @@ const REPO_API = 'https://api.github.com/repos/devTheKiwi/ClaudePet/releases/lat
 const RELEASES_PAGE = 'https://github.com/devTheKiwi/ClaudePet/releases/latest';
 
 export class UpdateChecker {
-  public readonly currentVersion = '2.6.0';
+  public readonly currentVersion = '2.6.2';
   public latestVersion: string | null = null;
   public updateAvailable = false;
   public onResult: ((message: string) => void) | null = null;
 
   checkOnLaunch(): void {
-    setTimeout(() => this.check(), 5000);
+    setTimeout(() => this.check(true), 5000);
   }
 
-  checkNow(): void {
-    this.check();
+  /** 주기적 재확인 — 새 버전일 때만 알림, 최신/실패면 조용히(말풍선 안 띄움) */
+  checkPeriodic(): void {
+    this.check(false);
   }
 
-  private async check(): Promise<void> {
+  private async check(announceWhenCurrent: boolean): Promise<void> {
     try {
       const res = await fetch(REPO_API, {
         headers: { 'User-Agent': 'ClaudePet-Windows' },
       });
       if (!res.ok) {
-        this.onResult?.(S.updateFailed);
+        if (announceWhenCurrent) this.onResult?.(S.updateFailed);
         return;
       }
       const json = (await res.json()) as { tag_name?: string };
       const tag = json.tag_name;
       if (!tag) {
-        this.onResult?.(S.updateFailed);
+        if (announceWhenCurrent) this.onResult?.(S.updateFailed);
         return;
       }
       const latest = tag.replace(/^v/, '');
@@ -48,10 +49,10 @@ export class UpdateChecker {
         this.onResult?.(S.updateAvailable(latest));
       } else {
         this.updateAvailable = false;
-        this.onResult?.(S.updateLatest(this.currentVersion));
+        if (announceWhenCurrent) this.onResult?.(S.updateLatest(this.currentVersion));
       }
     } catch {
-      this.onResult?.(S.updateFailed);
+      if (announceWhenCurrent) this.onResult?.(S.updateFailed);
     }
   }
 

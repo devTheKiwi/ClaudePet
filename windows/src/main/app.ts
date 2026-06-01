@@ -22,6 +22,7 @@ interface PetSession {
   cwd: string;
   sessionStart: number;   // ms
   workingSeconds: number;
+  creditedMinutes: number;   // 일별 작업시간에 이미 적립한 분 (세션별 독립 카운트)
   lastTool: string;
   petMode: 'code' | 'desktop';
 }
@@ -36,15 +37,15 @@ export class App {
   private settings = new UserSettings();
   private updateChecker = new UpdateChecker();
   private tray!: TrayManager;
-  private lastMinuteTrack = 0;
   private lastTokenMilestone = 0;
   private lastMilestoneDate = '';
   private desktopWasRunning = false;
   private desktopStartTime: number | null = null;
 
   async start(): Promise<void> {
-    this.tray = new TrayManager();
+    this.tray = new TrayManager(this.updateChecker.currentVersion);
     this.tray.onQuit = () => this.quit();
+    this.tray.onUpdate = () => this.updateChecker.runUpdate();
 
     // 첫 실행이면 자동 시작 기본 활성화
     if (this.settings.isFirstRun()) {
@@ -64,6 +65,8 @@ export class App {
       if (first) this.showSpeech(first, msg);
     };
     this.updateChecker.checkOnLaunch();
+    // 6시간마다 재확인 — 앱을 계속 켜둬도 새 버전을 알 수 있게 (최신이면 조용히)
+    setInterval(() => this.updateChecker.checkPeriodic(), 6 * 60 * 60 * 1000);
 
     this.setupIpc();
     this.startMonitoring();
@@ -102,6 +105,7 @@ export class App {
       cwd: '',
       sessionStart: Date.now(),
       workingSeconds: 0,
+      creditedMinutes: 0,
       lastTool: '',
       petMode: 'code',
     };
@@ -139,6 +143,7 @@ export class App {
       cwd: info.cwd,
       sessionStart: Date.now(),
       workingSeconds: 0,
+      creditedMinutes: 0,
       lastTool: '',
       petMode: 'code',
     };
@@ -231,8 +236,9 @@ export class App {
     // Desktop 감지
     await this.syncDesktop();
 
-    // 트레이 갱신
-    this.tray.rebuildMenu(this.snapshotForTray());
+    // 트레이 갱신 (업데이트 있으면 배지 + 메뉴 항목)
+    const updateVer = this.updateChecker.updateAvailable ? this.updateChecker.latestVersion : null;
+    this.tray.rebuildMenu(this.snapshotForTray(), updateVer);
   }
 
   private snapshotForTray(): TraySessionEntry[] {
@@ -305,6 +311,7 @@ export class App {
           cwd: '',
           sessionStart: Date.now(),
           workingSeconds: 0,
+          creditedMinutes: 0,
           lastTool: '',
           petMode: 'desktop',
         };
@@ -390,9 +397,10 @@ export class App {
 
       if (session.lastStatus === 'working') {
         session.workingSeconds += 1;
-        const totalMins = Math.floor(session.workingSeconds / 60);
-        if (totalMins > this.lastMinuteTrack) {
-          this.lastMinuteTrack = totalMins;
+        // 세션별로 자기 작업 분을 독립 적립 (전역 lastMinuteTrack 폐기 — 순차·자정 과소집계 버그 수정)
+        const workedMinutes = Math.floor(session.workingSeconds / 60);
+        if (workedMinutes > session.creditedMinutes) {
+          session.creditedMinutes = workedMinutes;
           this.timeTracker.addMinute();
         }
       }

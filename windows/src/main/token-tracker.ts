@@ -98,8 +98,8 @@ export class TokenTracker {
         const filePath = path.join(projectPath, file);
         try {
           const stat = fs.statSync(filePath);
-          if (stat.mtimeMs < startMs) continue;
-          const usage = this.parseJSONL(filePath);
+          if (stat.mtimeMs < startMs) continue;            // 1차 필터(성능): 오늘 수정된 파일만
+          const usage = this.parseJSONL(filePath, startMs); // 2차 필터(정확성): 오늘 줄만
           total.inputTokens += usage.inputTokens;
           total.outputTokens += usage.outputTokens;
           total.cacheCreationTokens += usage.cacheCreationTokens;
@@ -115,7 +115,11 @@ export class TokenTracker {
     return total;
   }
 
-  private parseJSONL(filePath: string): TokenUsage {
+  /**
+   * JSONL 파싱. sinceMs 를 주면 해당 시각 이후 timestamp 를 가진 줄만 합산한다.
+   * (세션 파일 하나가 여러 날에 걸쳐 누적되므로, "오늘" 집계 시 줄 단위로 걸러야 정확하다.)
+   */
+  private parseJSONL(filePath: string, sinceMs?: number): TokenUsage {
     const usage: TokenUsage = { ...EMPTY_USAGE };
     let content: string;
     try {
@@ -129,12 +133,18 @@ export class TokenTracker {
       try {
         const json = JSON.parse(line);
         const u = json?.message?.usage;
-        if (u) {
-          usage.inputTokens += u.input_tokens || 0;
-          usage.outputTokens += u.output_tokens || 0;
-          usage.cacheCreationTokens += u.cache_creation_input_tokens || 0;
-          usage.cacheReadTokens += u.cache_read_input_tokens || 0;
+        if (!u) continue;
+
+        // sinceMs 필터: 줄별 timestamp 가 기준 시각 이후인 줄만 (UTC↔로컬은 절대시각 비교라 안전)
+        if (sinceMs !== undefined) {
+          const t = json?.timestamp ? new Date(json.timestamp).getTime() : NaN;
+          if (isNaN(t) || t < sinceMs) continue;
         }
+
+        usage.inputTokens += u.input_tokens || 0;
+        usage.outputTokens += u.output_tokens || 0;
+        usage.cacheCreationTokens += u.cache_creation_input_tokens || 0;
+        usage.cacheReadTokens += u.cache_read_input_tokens || 0;
       } catch {
         continue;
       }

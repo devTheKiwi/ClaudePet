@@ -84,7 +84,7 @@ export function generatePng(
  * 단순한 디자인이 트레이 같은 작은 영역에서 인식성이 좋다.
  * Super-sampling (4x4) 안티앨리어싱으로 부드러운 가장자리 처리.
  */
-export function generateTrayIconPng(): Buffer {
+export function generateTrayIconPng(badge = false): Buffer {
   const size = 32;
   const cx = (size - 1) / 2;
   const cy = (size - 1) / 2;
@@ -105,6 +105,15 @@ export function generateTrayIconPng(): Buffer {
 
   // 한 픽셀 안의 색을 결정하는 함수 (sub-pixel float 좌표)
   const pixel = (fx: number, fy: number): [number, number, number, number] => {
+    // 업데이트 배지 — 우상단 초록 점 (몸 바깥까지 그려지게 원 체크보다 먼저)
+    if (badge) {
+      const bdx = fx - (size - 6);
+      const bdy = fy - 6;
+      const bdist = Math.sqrt(bdx * bdx + bdy * bdy);
+      if (bdist < 4.5) return [52, 199, 89, 255];     // 초록 점
+      if (bdist < 6.0) return [255, 255, 255, 255];   // 흰 테두리 (대비)
+    }
+
     const dx = fx - cx;
     const dy = fy - cy;
     const dist = Math.sqrt(dx * dx + dy * dy);
