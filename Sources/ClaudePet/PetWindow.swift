@@ -12,6 +12,7 @@ enum PetMode {
 enum PetSkinType: String, CaseIterable {
     case basic = "기본"
     case spring = "봄 에디션 🌸"
+    case summer = "여름 에디션 🍉"
 }
 
 // MARK: - Petal Particle (봄 에디션용)
@@ -182,6 +183,10 @@ class PetView: NSView {
     private var petals: [Petal] = []
     private let maxPetals = 8
 
+    // 여름 에디션 파티클 (떠오르는 비눗방울)
+    private var bubbles: [Petal] = []
+    private let maxBubbles = 8
+
     init(frame: NSRect, color: PetColor) {
         self.bodyColor = color.body
         self.bodyDarkColor = color.bodyDark
@@ -314,6 +319,11 @@ class PetView: NSView {
         NSBezierPath(roundedRect: NSRect(x: leftFootX, y: footY, width: 8, height: 10), xRadius: 3, yRadius: 3).fill()
         NSBezierPath(roundedRect: NSRect(x: rightFootX, y: footY, width: 8, height: 10), xRadius: 3, yRadius: 3).fill()
 
+        // === 여름: 튜브 뒤쪽 (몸 뒤로 감김) ===
+        if skin == .summer {
+            drawSummerTubeBack(centerX: centerX, bodyY: bodyY)
+        }
+
         // === 몸통 ===
         bodyColor.setFill()
         let bodyWidth: CGFloat = 40
@@ -370,6 +380,10 @@ class PetView: NSView {
         if skin == .spring {
             drawSpringAccessory(centerX: centerX, headTopY: headY + headHeight, bounceY: bounceY)
             updateAndDrawPetals()
+        }
+        if skin == .summer {
+            drawSummerAccessory(centerX: centerX, bodyY: bodyY, headTopY: headY + headHeight)
+            updateAndDrawBubbles()
         }
     }
 
@@ -515,6 +529,141 @@ class PetView: NSView {
             }
         }
         petals = activePetals
+    }
+
+    // MARK: - Summer Skin
+
+    // 튜브 중심 y (배 위치)
+    private func summerRingY(bodyY: CGFloat) -> CGFloat { bodyY + 8 }
+
+    /// 알록달록 도넛 튜브 한 장 (호출 측 클립으로 앞/뒤 절반만 보이게)
+    private func drawSummerTube(centerX: CGFloat, bodyY: CGFloat) {
+        let ringY = summerRingY(bodyY: bodyY)
+        let outerW: CGFloat = 56, outerH: CGFloat = 26
+        let innerW: CGFloat = 30, innerH: CGFloat = 12
+        let donut = NSBezierPath()
+        donut.appendOval(in: NSRect(x: centerX - outerW / 2, y: ringY - outerH / 2, width: outerW, height: outerH))
+        donut.appendOval(in: NSRect(x: centerX - innerW / 2, y: ringY - innerH / 2, width: innerW, height: innerH))
+        donut.windingRule = .evenOdd
+
+        // 알록달록 8조각 — radial 웨지로 클립해 도넛을 색칠
+        let colors: [NSColor] = [
+            NSColor(red: 0.96, green: 0.30, blue: 0.33, alpha: 1),   // 빨강
+            NSColor(red: 1.00, green: 0.82, blue: 0.25, alpha: 1),   // 노랑
+            NSColor(red: 0.30, green: 0.72, blue: 0.95, alpha: 1),   // 파랑
+            NSColor(white: 1.0, alpha: 1),                           // 흰
+        ]
+        for i in 0..<8 {
+            NSGraphicsContext.saveGraphicsState()
+            let wedge = NSBezierPath()
+            wedge.move(to: NSPoint(x: centerX, y: ringY))
+            wedge.appendArc(withCenter: NSPoint(x: centerX, y: ringY), radius: outerW,
+                            startAngle: CGFloat(i) * 45, endAngle: CGFloat(i + 1) * 45)
+            wedge.close()
+            wedge.addClip()
+            colors[i % colors.count].setFill()
+            donut.fill()
+            NSGraphicsContext.restoreGraphicsState()
+        }
+        // 안쪽 구멍 음영(입체감)
+        NSColor(white: 0.0, alpha: 0.12).setStroke()
+        let hole = NSBezierPath(ovalIn: NSRect(x: centerX - innerW / 2, y: ringY - innerH / 2, width: innerW, height: innerH))
+        hole.lineWidth = 1
+        hole.stroke()
+    }
+
+    /// 튜브 뒤쪽(위 절반) — 몸통 그리기 전에 호출해 몸 뒤로 감기게 함
+    private func drawSummerTubeBack(centerX: CGFloat, bodyY: CGFloat) {
+        let ringY = summerRingY(bodyY: bodyY)
+        NSGraphicsContext.saveGraphicsState()
+        NSBezierPath(rect: NSRect(x: 0, y: ringY, width: bounds.width, height: bounds.height - ringY)).addClip()
+        drawSummerTube(centerX: centerX, bodyY: bodyY)
+        NSGraphicsContext.restoreGraphicsState()
+    }
+
+    private func drawSummerAccessory(centerX: CGFloat, bodyY: CGFloat, headTopY: CGFloat) {
+        // === 튜브 앞쪽(아래 절반) — 몸통 앞으로 (배에 두른 느낌) ===
+        let ringY = summerRingY(bodyY: bodyY)
+        NSGraphicsContext.saveGraphicsState()
+        NSBezierPath(rect: NSRect(x: 0, y: 0, width: bounds.width, height: ringY)).addClip()
+        drawSummerTube(centerX: centerX, bodyY: bodyY)
+        NSGraphicsContext.restoreGraphicsState()
+
+        // === 비치 파라솔 (머리 위 — 알록달록 캐노피 + 막대) ===
+        let pX = centerX + 5
+        let rimY = headTopY + 6          // 캐노피 밑단
+        let domeH: CGFloat = 6           // 캐노피 높이
+        let halfW: CGFloat = 10          // 캐노피 반폭
+
+        // 막대 (머리 → 캐노피)
+        NSColor(red: 0.50, green: 0.40, blue: 0.36, alpha: 1.0).setStroke()
+        let pole = NSBezierPath()
+        pole.move(to: NSPoint(x: pX, y: headTopY))
+        pole.line(to: NSPoint(x: pX, y: rimY))
+        pole.lineWidth = 1.5
+        pole.stroke()
+
+        // 캐노피 = 위 절반 타원을 세로 패널로 색칠 (튜브와 같은 알록달록)
+        let dome = NSRect(x: pX - halfW, y: rimY - domeH, width: halfW * 2, height: domeH * 2)
+        let canopyColors: [NSColor] = [
+            NSColor(red: 0.96, green: 0.30, blue: 0.33, alpha: 1),
+            NSColor(red: 1.00, green: 0.82, blue: 0.25, alpha: 1),
+            NSColor(red: 0.30, green: 0.72, blue: 0.95, alpha: 1),
+            NSColor(white: 1.0, alpha: 1),
+        ]
+        let panels = 4
+        let panelW = halfW * 2 / CGFloat(panels)
+        for i in 0..<panels {
+            NSGraphicsContext.saveGraphicsState()
+            let sx = pX - halfW + CGFloat(i) * panelW
+            NSBezierPath(rect: NSRect(x: sx, y: rimY, width: panelW + 0.5, height: domeH + 1)).addClip()
+            canopyColors[i % canopyColors.count].setFill()
+            NSBezierPath(ovalIn: dome).fill()
+            NSGraphicsContext.restoreGraphicsState()
+        }
+        // 밑단 라인 + 꼭지
+        NSColor(white: 0.0, alpha: 0.15).setStroke()
+        let rimLine = NSBezierPath()
+        rimLine.move(to: NSPoint(x: pX - halfW, y: rimY))
+        rimLine.line(to: NSPoint(x: pX + halfW, y: rimY))
+        rimLine.lineWidth = 0.8
+        rimLine.stroke()
+        NSColor(red: 0.96, green: 0.30, blue: 0.33, alpha: 1).setFill()
+        NSBezierPath(ovalIn: NSRect(x: pX - 1.3, y: rimY + domeH - 1, width: 2.6, height: 2.6)).fill()
+    }
+
+    private func updateAndDrawBubbles() {
+        // 아래에서 위로 떠오르는 비눗방울
+        if bubbles.count < maxBubbles && animationFrame % 14 == 0 {
+            bubbles.append(Petal(
+                x: CGFloat.random(in: 8...max(9, bounds.width - 8)),
+                y: -4,
+                size: CGFloat.random(in: 2.5...5.0),
+                speed: CGFloat.random(in: 0.4...0.9),
+                swayPhase: CGFloat.random(in: 0...(2 * .pi)),
+                rotation: 0,
+                alpha: CGFloat.random(in: 0.35...0.7)
+            ))
+        }
+
+        var active: [Petal] = []
+        for var b in bubbles {
+            b.y += b.speed
+            b.x += sin(b.swayPhase + b.y * 0.05) * 0.4
+            if b.y < bounds.height + 6 {
+                let s = b.size
+                NSColor(red: 0.60, green: 0.85, blue: 1.0, alpha: b.alpha * 0.35).setFill()   // 속(연한 물색)
+                NSBezierPath(ovalIn: NSRect(x: b.x, y: b.y, width: s, height: s)).fill()
+                NSColor(red: 0.72, green: 0.90, blue: 1.0, alpha: b.alpha).setStroke()         // 테두리
+                let ring = NSBezierPath(ovalIn: NSRect(x: b.x, y: b.y, width: s, height: s))
+                ring.lineWidth = 0.8
+                ring.stroke()
+                NSColor(white: 1.0, alpha: b.alpha).setFill()                                  // 반짝
+                NSBezierPath(ovalIn: NSRect(x: b.x + s * 0.2, y: b.y + s * 0.55, width: s * 0.25, height: s * 0.25)).fill()
+                active.append(b)
+            }
+        }
+        bubbles = active
     }
 
     // MARK: - Effects

@@ -16,8 +16,12 @@ class UpdateChecker {
         }
     }
 
-    /// 주기적 재확인 — 새 버전일 때만 알림, 최신/실패면 조용히(말풍선 안 띄움)
+    private var lastCheckAt: Date?
+
+    /// 주기적/이벤트 재확인 — 새 버전일 때만 알림. 30분 쿨다운(깨어남·활성화 연타로 API 도배 방지)
     func checkPeriodic() {
+        if let last = lastCheckAt, Date().timeIntervalSince(last) < 1800 { return }
+        lastCheckAt = Date()
         DispatchQueue.global().async { [weak self] in
             self?.check(announceWhenCurrent: false)
         }

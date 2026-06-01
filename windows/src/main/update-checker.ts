@@ -12,7 +12,7 @@ const REPO_API = 'https://api.github.com/repos/devTheKiwi/ClaudePet/releases/lat
 const RELEASES_PAGE = 'https://github.com/devTheKiwi/ClaudePet/releases/latest';
 
 export class UpdateChecker {
-  public readonly currentVersion = '2.6.2';
+  public readonly currentVersion = '2.7.0';
   public latestVersion: string | null = null;
   public updateAvailable = false;
   public onResult: ((message: string) => void) | null = null;
@@ -21,8 +21,13 @@ export class UpdateChecker {
     setTimeout(() => this.check(true), 5000);
   }
 
-  /** 주기적 재확인 — 새 버전일 때만 알림, 최신/실패면 조용히(말풍선 안 띄움) */
+  private lastCheckAt = 0;
+
+  /** 주기적/이벤트 재확인 — 새 버전일 때만 알림. 30분 쿨다운(깨어남·포커스 연타로 API 도배 방지) */
   checkPeriodic(): void {
+    const now = Date.now();
+    if (now - this.lastCheckAt < 30 * 60 * 1000) return;
+    this.lastCheckAt = now;
     this.check(false);
   }
 

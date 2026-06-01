@@ -8,7 +8,7 @@ import * as path from 'path';
 const MIN_WIDTH = 80;
 const MAX_WIDTH = 280;
 
-export type PetSkin = 'basic' | 'spring';
+export type PetSkin = 'basic' | 'spring' | 'summer';
 
 export class BubbleWindow {
   public readonly window: BrowserWindow;

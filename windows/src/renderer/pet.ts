@@ -18,7 +18,7 @@ export {};
 type PetState = 'idle' | 'walkingLeft' | 'walkingRight' | 'jumping' | 'happy' | 'excited';
 type ClaudeStatus = 'notRunning' | 'idle' | 'working' | 'waitingForPermission';
 type PetMode = 'code' | 'desktop';
-type PetSkin = 'basic' | 'spring';
+type PetSkin = 'basic' | 'spring' | 'summer';
 
 interface PetColor {
   body: string;
@@ -76,6 +76,10 @@ let animationFrame = 0;
 // 봄 에디션 파티클
 const petals: Petal[] = [];
 const MAX_PETALS = 8;
+
+// 여름 에디션 파티클 (떠오르는 비눗방울)
+const bubbles: Petal[] = [];
+const MAX_BUBBLES = 8;
 
 // 행동 타이머
 let behaviorTimeoutId: number | null = null;
@@ -306,6 +310,11 @@ function draw(): void {
   fillRoundRect(leftFootX, footY, 8, 10, 3);
   fillRoundRect(rightFootX, footY, 8, 10, 3);
 
+  // === 여름: 튜브 뒤쪽 (몸 뒤로) ===
+  if (skin === 'summer') {
+    drawSummerTubeBack(centerX, bodyY);
+  }
+
   // === 몸통 ===
   ctx.fillStyle = color.body;
   const bodyWidth = 40;
@@ -353,6 +362,11 @@ function draw(): void {
   if (skin === 'spring') {
     drawSpringAccessory(centerX, headY + headHeight, bounceY);
     updateAndDrawPetals();
+  }
+  // === 여름 스킨 악세서리 ===
+  if (skin === 'summer') {
+    drawSummerAccessory(centerX, bodyY, headY + headHeight);
+    updateAndDrawBubbles();
   }
 
   ctx.restore();
@@ -524,6 +538,134 @@ function updateAndDrawPetals(): void {
       fillEllipse(px, p.y, p.size, p.size * 0.7);
     } else {
       petals.splice(i, 1);
+    }
+  }
+}
+
+// ===== Summer Skin =====
+
+const SUMMER_RING_DY = 8;
+const TUBE_COLORS = ['rgb(245, 77, 84)', 'rgb(255, 209, 64)', 'rgb(77, 184, 242)', 'rgb(255, 255, 255)'];
+
+/** 알록달록 도넛 튜브 한 장 (호출 측 클립으로 앞/뒤 절반만 보이게) */
+function drawSummerTube(centerX: number, bodyY: number): void {
+  const ringY = bodyY + SUMMER_RING_DY;
+  const outerW = 56, outerH = 26;
+  const innerW = 30, innerH = 12;
+
+  // 알록달록 8조각 — 부채꼴 클립으로 도넛을 색칠
+  for (let i = 0; i < 8; i++) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(centerX, ringY);
+    ctx.arc(centerX, ringY, outerW, (i * 45) * Math.PI / 180, ((i + 1) * 45) * Math.PI / 180);
+    ctx.closePath();
+    ctx.clip();
+    // 도넛 (evenodd)
+    ctx.beginPath();
+    ctx.ellipse(centerX, ringY, outerW / 2, outerH / 2, 0, 0, Math.PI * 2);
+    ctx.ellipse(centerX, ringY, innerW / 2, innerH / 2, 0, 0, Math.PI * 2);
+    ctx.fillStyle = TUBE_COLORS[i % TUBE_COLORS.length];
+    ctx.fill('evenodd');
+    ctx.restore();
+  }
+  // 안쪽 구멍 음영
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.12)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.ellipse(centerX, ringY, innerW / 2, innerH / 2, 0, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+/** 튜브 뒤쪽(위 절반) — 몸통 그리기 전에 호출 */
+function drawSummerTubeBack(centerX: number, bodyY: number): void {
+  const ringY = bodyY + SUMMER_RING_DY;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, ringY, W, H - ringY);
+  ctx.clip();
+  drawSummerTube(centerX, bodyY);
+  ctx.restore();
+}
+
+function drawSummerAccessory(centerX: number, bodyY: number, headTopY: number): void {
+  const ringY = bodyY + SUMMER_RING_DY;
+  // 튜브 앞쪽(아래 절반) — 몸통 앞으로
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, W, ringY);
+  ctx.clip();
+  drawSummerTube(centerX, bodyY);
+  ctx.restore();
+
+  // 비치 파라솔 (머리 위)
+  const pX = centerX + 5;
+  const rimY = headTopY + 6;
+  const domeH = 6;
+  const halfW = 10;
+  // 막대
+  ctx.strokeStyle = 'rgb(128, 102, 92)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(pX, headTopY);
+  ctx.lineTo(pX, rimY);
+  ctx.stroke();
+  // 캐노피 — 위 절반 타원을 세로 패널로 색칠
+  const panels = 4;
+  const panelW = halfW * 2 / panels;
+  for (let i = 0; i < panels; i++) {
+    ctx.save();
+    const sx = pX - halfW + i * panelW;
+    ctx.beginPath();
+    ctx.rect(sx, rimY, panelW + 0.5, domeH + 1);
+    ctx.clip();
+    ctx.fillStyle = TUBE_COLORS[i % TUBE_COLORS.length];
+    ctx.beginPath();
+    ctx.ellipse(pX, rimY, halfW, domeH, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+  // 밑단 라인 + 꼭지
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(pX - halfW, rimY);
+  ctx.lineTo(pX + halfW, rimY);
+  ctx.stroke();
+  ctx.fillStyle = 'rgb(245, 77, 84)';
+  fillEllipse(pX - 1.3, rimY + domeH - 1, 2.6, 2.6);
+}
+
+function updateAndDrawBubbles(): void {
+  // 아래에서 위로 떠오르는 비눗방울
+  if (bubbles.length < MAX_BUBBLES && animationFrame % 14 === 0) {
+    bubbles.push({
+      x: 8 + Math.random() * Math.max(1, W - 16),
+      y: -4,
+      size: 2.5 + Math.random() * 2.5,
+      speed: 0.4 + Math.random() * 0.5,
+      swayPhase: Math.random() * 2 * Math.PI,
+      rotation: 0,
+      alpha: 0.35 + Math.random() * 0.35,
+    });
+  }
+  for (let i = bubbles.length - 1; i >= 0; i--) {
+    const b = bubbles[i];
+    b.y += b.speed;
+    b.x += Math.sin(b.swayPhase + b.y * 0.05) * 0.4;
+    if (b.y < H + 6) {
+      const s = b.size;
+      ctx.fillStyle = `rgba(153, 217, 255, ${b.alpha * 0.35})`;
+      fillEllipse(b.x, b.y, s, s);
+      ctx.strokeStyle = `rgba(184, 230, 255, ${b.alpha})`;
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.ellipse(b.x + s / 2, b.y + s / 2, s / 2, s / 2, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = `rgba(255, 255, 255, ${b.alpha})`;
+      fillEllipse(b.x + s * 0.2, b.y + s * 0.55, s * 0.25, s * 0.25);
+    } else {
+      bubbles.splice(i, 1);
     }
   }
 }

@@ -104,6 +104,14 @@ export const idleMessages = isKorean
       '오늘도 화이팅!',
       '난 여기서 지켜보고 있을게~',
       '세미콜론 빼먹지 않았지?',
+      '물 한 잔 마시고 와~ 💧',
+      '눈도 잠깐 쉬어주자 👀',
+      '오늘 목표 절반은 했어?',
+      '막히면 잠깐 산책 어때?',
+      '넌 충분히 잘하고 있어 :)',
+      '테스트 돌려보는 거 잊지 마!',
+      '어깨 쫙 펴고 자세 바르게~',
+      '가끔은 쉬어도 괜찮아~',
     ]
   : [
       'Done much coding today?',
@@ -114,11 +122,39 @@ export const idleMessages = isKorean
       'You got this!',
       "I'm watching over you~",
       "Didn't forget a semicolon?",
+      'Go grab some water~ 💧',
+      'Rest your eyes for a sec 👀',
+      "Halfway to today's goal?",
+      'Stuck? Take a short walk!',
+      "You're doing great :)",
+      "Don't forget to run tests!",
+      'Sit up straight~ shoulders back!',
+      "It's okay to take a break~",
     ];
 
 export const workingMessages = isKorean
-  ? ['열심히 작업 중이야!', '잘 되고 있어!', '곧 끝날 거야!']
-  : ['Working hard!', 'Going well!', 'Almost done!'];
+  ? ['열심히 작업 중이야!', '잘 되고 있어!', '곧 끝날 거야!',
+     '집중 모드 ON! 🔥', '타닥타닥... 코드 나간다~', '이번엔 한 번에 돼라~ 🙏',
+     '버그야 비켜! 🐛', '조금만 더, 거의 다 왔어!']
+  : ['Working hard!', 'Going well!', 'Almost done!',
+     'Focus mode ON! 🔥', 'Tap tap... code incoming~', 'Please work first try~ 🙏',
+     'Move over, bugs! 🐛', 'Just a bit more, almost there!'];
+
+// MARK: - 에디션 멘트 (스킨별)
+
+export const summerMessages = isKorean
+  ? ['물놀이 가고 싶다~ 🏖️', '오늘 완전 여름 날씨야! ☀️', '튜브 타고 둥둥~ 🛟',
+     '아이스크림 먹고 싶어 🍦', '수박 한 입 어때? 🍉', '선크림 꼭 발라~ 🧴',
+     '바다 보러 가고 싶다 🌊', '더우니까 물 많이 마셔! 💧']
+  : ['I wanna go swimming~ 🏖️', 'Total summer weather! ☀️', 'Floating on my tube~ 🛟',
+     'I want ice cream 🍦', 'Watermelon, anyone? 🍉', "Don't forget sunscreen~ 🧴",
+     'I miss the beach 🌊', "Stay hydrated, it's hot! 💧"];
+
+export const springMessages = isKorean
+  ? ['벚꽃이 예쁘다~ 🌸', '봄바람 살랑살랑~ 🍃', '꽃놀이 가고 싶다!',
+     '새싹이 쏙 돋았어 🌱', '봄이라 그런가 나른해~', '꽃가루 조심해! 🤧']
+  : ['Cherry blossoms are pretty~ 🌸', 'Spring breeze~ 🍃', "Let's go see the flowers!",
+     'A little sprout popped up 🌱', 'Spring makes me sleepy~', 'Watch out for pollen! 🤧'];
 
 // MARK: - Model reactions
 
@@ -172,10 +208,14 @@ export function desktopTimeAlert(mins: number): string[] {
 
 export const skinBasic  = isKorean ? '기본' : 'Basic';
 export const skinSpring = isKorean ? '봄 에디션 🌸' : 'Spring 🌸';
-export const skinChanged = (isSpring: boolean): string =>
-  isSpring
-    ? (isKorean ? '봄이 왔어! 🌸' : 'Spring is here! 🌸')
-    : (isKorean ? '기본 스킨으로 돌아왔어!' : 'Back to default skin!');
+export const skinSummer = isKorean ? '여름 에디션 🍉' : 'Summer 🍉';
+export const skinChanged = (skin: 'basic' | 'spring' | 'summer'): string => {
+  switch (skin) {
+    case 'spring': return isKorean ? '봄이 왔어! 🌸' : 'Spring is here! 🌸';
+    case 'summer': return isKorean ? '여름이다! 물놀이 가자~ 🍉' : "Summer time! Let's splash~ 🍉";
+    default:       return isKorean ? '기본 스킨으로 돌아왔어!' : 'Back to default skin!';
+  }
+};
 
 // MARK: - Menu labels
 

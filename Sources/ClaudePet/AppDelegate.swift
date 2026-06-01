@@ -113,6 +113,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         Timer.scheduledTimer(withTimeInterval: 6 * 60 * 60, repeats: true) { [weak self] _ in
             self?.updateChecker.checkPeriodic()
         }
+        // 맥 잠금해제(깨어남)·앱 활성화 시 즉시 재확인 — 6시간 안 기다림 (쿨다운은 checkPeriodic 내부)
+        NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
+        ) { [weak self] _ in self?.updateChecker.checkPeriodic() }
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main
+        ) { [weak self] _ in self?.updateChecker.checkPeriodic() }
 
         startMonitoring()
         scheduleRandomSpeech()
@@ -226,7 +233,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 저장
         UserDefaults.standard.set(skinType.rawValue, forKey: "claudepet_skin")
 
-        let msg = L10n.skinChanged(skinType == .spring)
+        let msg = L10n.skinChanged(skinType)
         if let session = sessions.values.first {
             showSpeech(msg, for: session)
         }
@@ -668,7 +675,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 스킨 서브메뉴
         let skinMenu = NSMenu()
         for skinType in PetSkinType.allCases {
-            let displayName = skinType == .spring ? L10n.skinSpring : L10n.skinBasic
+            let displayName: String
+            switch skinType {
+            case .basic: displayName = L10n.skinBasic
+            case .spring: displayName = L10n.skinSpring
+            case .summer: displayName = L10n.skinSummer
+            }
             let item = NSMenuItem(title: displayName, action: #selector(changeSkin(_:)), keyEquivalent: "")
             item.target = self
             item.representedObject = skinType.rawValue
@@ -742,12 +754,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         guard let (_, session) = sessions.randomElement() else { return }
         guard session.petWindow.isVisible else { return }
 
-        let idleMessages = L10n.idleMessages + [modelMessage()]
+        if session.lastStatus == .working {
+            if let message = L10n.workingMessages.randomElement() {
+                showSpeech(message, for: session)
+            }
+            return
+        }
 
-        let workingMessages = L10n.workingMessages
-
-        let messages = session.lastStatus == .working ? workingMessages : idleMessages
-        if let message = messages.randomElement() {
+        // idle: 기본 멘트 + 모델 멘트 + (스킨에 따라) 에디션 멘트를 가중치 있게 섞기
+        var pool = L10n.idleMessages + [modelMessage()]
+        switch session.petWindow.petView.skin {
+        case .summer: pool += L10n.summerMessages + L10n.summerMessages   // 여름 멘트 자주
+        case .spring: pool += L10n.springMessages + L10n.springMessages   // 봄 멘트 자주
+        case .basic: break
+        }
+        if let message = pool.randomElement() {
             showSpeech(message, for: session)
         }
     }

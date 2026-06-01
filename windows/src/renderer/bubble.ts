@@ -5,7 +5,7 @@ export {};
  * Speech bubble renderer — SpeechBubble.swift SpeechBubbleView.draw() 포팅
  */
 
-type PetSkin = 'basic' | 'spring';
+type PetSkin = 'basic' | 'spring' | 'summer';
 
 declare global {
   interface Window {
@@ -58,6 +58,10 @@ function draw(): void {
   if (currentSkin === 'spring') {
     bgColor = 'rgb(255, 242, 245)';
     borderColor = 'rgb(242, 191, 204)';
+    tailColor = bgColor;
+  } else if (currentSkin === 'summer') {
+    bgColor = 'rgb(235, 248, 255)';
+    borderColor = 'rgb(178, 224, 247)';
     tailColor = bgColor;
   } else {
     bgColor = 'rgb(255, 255, 255)';

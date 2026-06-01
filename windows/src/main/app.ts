@@ -3,7 +3,7 @@
  * 세션 관리 / 상태 동기화 / 클릭 핸들러 / 랜덤 말풍선 / 토큰 마일스톤 / Desktop 감지.
  */
 
-import { app, ipcMain, Menu, MenuItem, screen } from 'electron';
+import { app, ipcMain, Menu, MenuItem, screen, powerMonitor } from 'electron';
 import { PetWindow } from './pet-window';
 import { BubbleWindow } from './bubble-window';
 import { TrayManager, TraySessionEntry } from './tray-manager';
@@ -67,6 +67,9 @@ export class App {
     this.updateChecker.checkOnLaunch();
     // 6시간마다 재확인 — 앱을 계속 켜둬도 새 버전을 알 수 있게 (최신이면 조용히)
     setInterval(() => this.updateChecker.checkPeriodic(), 6 * 60 * 60 * 1000);
+    // 절전 복귀(깨어남)·창 포커스 시 즉시 재확인 — 6시간 안 기다림 (쿨다운은 checkPeriodic 내부)
+    powerMonitor.on('resume', () => this.updateChecker.checkPeriodic());
+    app.on('browser-window-focus', () => this.updateChecker.checkPeriodic());
 
     this.setupIpc();
     this.startMonitoring();
@@ -437,9 +440,15 @@ export class App {
     const session = arr[Math.floor(Math.random() * arr.length)];
     if (!session.petWindow.window.isVisible()) return;
 
-    const idleMessages = [...S.idleMessages, this.modelMessage()];
-    const messages = session.lastStatus === 'working' ? S.workingMessages : idleMessages;
-    this.showSpeech(session, messages[Math.floor(Math.random() * messages.length)]);
+    if (session.lastStatus === 'working') {
+      this.showSpeech(session, S.workingMessages[Math.floor(Math.random() * S.workingMessages.length)]);
+      return;
+    }
+    // idle: 기본 + 모델 + (스킨에 따라) 에디션 멘트를 가중치 있게 섞기
+    let pool = [...S.idleMessages, this.modelMessage()];
+    if (this.settings.skin === 'summer') pool = pool.concat(S.summerMessages, S.summerMessages);
+    else if (this.settings.skin === 'spring') pool = pool.concat(S.springMessages, S.springMessages);
+    this.showSpeech(session, pool[Math.floor(Math.random() * pool.length)]);
   }
 
   // ======================================================================
@@ -614,7 +623,7 @@ export class App {
     }));
 
     const skinSubmenu = new Menu();
-    for (const [name, key] of [[S.skinBasic, 'basic'], [S.skinSpring, 'spring']] as const) {
+    for (const [name, key] of [[S.skinBasic, 'basic'], [S.skinSpring, 'spring'], [S.skinSummer, 'summer']] as const) {
       skinSubmenu.append(new MenuItem({
         label: name,
         type: 'radio',
@@ -625,7 +634,7 @@ export class App {
             s.petWindow.sendState({ skin: key });
           }
           const first = this.sessions.values().next().value;
-          if (first) this.showSpeech(first, S.skinChanged(key === 'spring'));
+          if (first) this.showSpeech(first, S.skinChanged(key));
         },
       }));
     }
