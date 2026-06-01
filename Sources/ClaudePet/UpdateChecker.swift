@@ -12,19 +12,22 @@ class UpdateChecker {
 
     func checkOnLaunch() {
         DispatchQueue.global().asyncAfter(deadline: .now() + 5) { [weak self] in
-            self?.check()
+            self?.check(announceWhenCurrent: true)
         }
     }
 
-    func checkNow() {
+    /// 주기적 재확인 — 새 버전일 때만 알림, 최신/실패면 조용히(말풍선 안 띄움)
+    func checkPeriodic() {
         DispatchQueue.global().async { [weak self] in
-            self?.check()
+            self?.check(announceWhenCurrent: false)
         }
     }
 
-    private func check() {
+    private func check(announceWhenCurrent: Bool) {
         guard let url = URL(string: repoAPI) else {
-            DispatchQueue.main.async { self.onResult?(L10n.isKorean ? "업데이트 확인 실패" : "Update check failed") }
+            if announceWhenCurrent {
+                DispatchQueue.main.async { self.onResult?(L10n.isKorean ? "업데이트 확인 실패" : "Update check failed") }
+            }
             return
         }
 
@@ -35,7 +38,9 @@ class UpdateChecker {
                   let data = data,
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let latestTag = json["tag_name"] as? String else {
-                DispatchQueue.main.async { self.onResult?(L10n.isKorean ? "업데이트 확인 실패" : "Update check failed") }
+                if announceWhenCurrent {
+                    DispatchQueue.main.async { self.onResult?(L10n.isKorean ? "업데이트 확인 실패" : "Update check failed") }
+                }
                 return
             }
 
@@ -49,8 +54,10 @@ class UpdateChecker {
                 }
             } else {
                 self.updateAvailable = false
-                DispatchQueue.main.async {
-                    self.onResult?(L10n.updateLatest(self.currentVersion))
+                if announceWhenCurrent {
+                    DispatchQueue.main.async {
+                        self.onResult?(L10n.updateLatest(self.currentVersion))
+                    }
                 }
             }
         }

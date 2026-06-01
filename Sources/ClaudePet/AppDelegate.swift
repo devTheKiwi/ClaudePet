@@ -10,6 +10,7 @@ struct PetSession {
     var cwd: String
     var sessionStart: Date = Date()
     var workingSeconds: Int = 0
+    var creditedMinutes: Int = 0   // 일별 작업시간에 이미 적립한 분 (세션별 독립 카운트)
     var lastTool: String = ""
 }
 
@@ -108,6 +109,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         updateChecker.checkOnLaunch()
+        // 6시간마다 재확인 — 앱을 계속 켜둬도 새 버전을 알 수 있게 (최신이면 조용히)
+        Timer.scheduledTimer(withTimeInterval: 6 * 60 * 60, repeats: true) { [weak self] _ in
+            self?.updateChecker.checkPeriodic()
+        }
 
         startMonitoring()
         scheduleRandomSpeech()
@@ -144,7 +149,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Status Bar
 
     private func setupStatusBar() {
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
             button.title = "🐛"
         }
@@ -152,6 +157,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func rebuildStatusMenu() {
+        // 메뉴바 아이콘 배지: 업데이트 있으면 🎉 (메뉴 안 열어도 항상 보임)
+        statusItem.button?.title = updateChecker.updateAvailable ? "🐛🎉" : "🐛"
+
         let menu = NSMenu()
         menu.addItem(NSMenuItem(title: "Claude Pet v\(updateChecker.currentVersion)", action: nil, keyEquivalent: ""))
         menu.addItem(NSMenuItem.separator())
@@ -174,6 +182,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         menu.addItem(NSMenuItem.separator())
+
+        // 업데이트 있으면 메뉴바 메뉴에도 실행 항목 노출 (배지 보고 아이콘 눌렀을 때 헤매지 않게)
+        if updateChecker.updateAvailable, let ver = updateChecker.latestVersion {
+            let updateItem = NSMenuItem(title: "🎉 v\(ver) \(L10n.menuUpdate)", action: #selector(runUpdate), keyEquivalent: "")
+            updateItem.target = self
+            menu.addItem(updateItem)
+            menu.addItem(NSMenuItem.separator())
+        }
 
         let quitItem = NSMenuItem(title: L10n.menuQuit, action: #selector(quitApp), keyEquivalent: "q")
         quitItem.target = self
@@ -268,8 +284,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Time Tracking
 
-    private var lastMinuteTrack: Int = 0
-
     private func startTimeTracking() {
         // 1초마다 세션 시간 업데이트
         Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
@@ -307,9 +321,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             if session.lastStatus == .working {
                 sessions[id]?.workingSeconds += 1
 
-                let totalSecs = sessions[id]?.workingSeconds ?? 0
-                if totalSecs / 60 > lastMinuteTrack {
-                    lastMinuteTrack = totalSecs / 60
+                // 세션별로 자기 작업 분을 독립 적립 (전역 워터마크 폐기 — 순차·자정 과소집계 버그 수정)
+                let workedMinutes = (sessions[id]?.workingSeconds ?? 0) / 60
+                if workedMinutes > (sessions[id]?.creditedMinutes ?? 0) {
+                    sessions[id]?.creditedMinutes = workedMinutes
                     timeTracker.addMinute()
                 }
             }
