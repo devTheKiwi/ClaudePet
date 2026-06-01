@@ -1,0 +1,60 @@
+name: Build Windows installer
+
+# 진짜 windows-latest 러너에서 NSIS .exe 를 빌드해 해당 태그의 GitHub Release 에 첨부한다.
+# (macOS 에선 Wine 없이 NSIS 빌드가 안 되므로 클라우드 Windows 에서 빌드)
+
+on:
+  push:
+    tags: ['v*']            # 앞으로 새 태그 푸시 시 자동 빌드
+  workflow_dispatch:        # 이미 존재하는 태그(v2.6.2 등)를 수동으로 빌드
+    inputs:
+      tag:
+        description: 'Release tag to build and attach the installer to'
+        required: true
+        default: 'v2.6.2'
+
+permissions:
+  contents: write           # 릴리스 에셋 업로드용
+
+jobs:
+  windows-installer:
+    runs-on: windows-latest
+    steps:
+      - name: Resolve tag
+        id: t
+        shell: bash
+        run: echo "tag=${{ github.event.inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout ${{ steps.t.outputs.tag }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.t.outputs.tag }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: windows
+        run: npm install
+
+      - name: Build NSIS installer (npm run dist)
+        working-directory: windows
+        run: npm run dist
+
+      - name: List build output
+        working-directory: windows
+        shell: bash
+        run: ls -la release || true
+
+      - name: Upload installer to release ${{ steps.t.outputs.tag }}
+        working-directory: windows
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          exe=$(ls release/*.exe | head -1)
+          test -n "$exe" || { echo "No .exe produced in release/"; exit 1; }
+          echo "Uploading $exe to ${{ steps.t.outputs.tag }}"
+          gh release upload "${{ steps.t.outputs.tag }}" "$exe" --clobber
