@@ -18,7 +18,7 @@ export {};
 type PetState = 'idle' | 'walkingLeft' | 'walkingRight' | 'jumping' | 'happy' | 'excited';
 type ClaudeStatus = 'notRunning' | 'idle' | 'working' | 'waitingForPermission';
 type PetMode = 'code' | 'desktop';
-type PetSkin = 'basic' | 'spring' | 'summer';
+type PetSkin = 'basic' | 'spring' | 'summer' | 'autumn';
 
 interface PetColor {
   body: string;
@@ -80,6 +80,10 @@ const MAX_PETALS = 8;
 // 여름 에디션 파티클 (떠오르는 비눗방울)
 const bubbles: Petal[] = [];
 const MAX_BUBBLES = 8;
+
+// 가을 에디션 파티클 (떨어지는 낙엽)
+const leaves: Petal[] = [];
+const MAX_LEAVES = 8;
 
 // 행동 타이머
 let behaviorTimeoutId: number | null = null;
@@ -315,6 +319,11 @@ function draw(): void {
     drawSummerTubeBack(centerX, bodyY);
   }
 
+  // === 가을: 목도리 뒤쪽 (목 뒤로) ===
+  if (skin === 'autumn') {
+    drawAutumnScarfBack(centerX, bodyY);
+  }
+
   // === 몸통 ===
   ctx.fillStyle = color.body;
   const bodyWidth = 40;
@@ -367,6 +376,11 @@ function draw(): void {
   if (skin === 'summer') {
     drawSummerAccessory(centerX, bodyY, headY + headHeight);
     updateAndDrawBubbles();
+  }
+  // === 가을 스킨 악세서리 ===
+  if (skin === 'autumn') {
+    drawAutumnAccessory(centerX, bodyY, headY + headHeight);
+    updateAndDrawLeaves();
   }
 
   ctx.restore();
@@ -667,6 +681,190 @@ function updateAndDrawBubbles(): void {
     } else {
       bubbles.splice(i, 1);
     }
+  }
+}
+
+// ===== Autumn Skin (PetWindow.swift Autumn Skin 1:1 포팅) =====
+
+const MAPLE = 'rgb(192, 67, 42)';
+const MAPLE_DARK = 'rgb(140, 44, 28)';
+const LEAF_STEM = 'rgb(120, 78, 44)';
+const SCARF_A = 'rgb(178, 62, 44)';
+const SCARF_B = 'rgb(222, 198, 158)';
+const LEAF_COLORS = ['rgb(192,67,42)', 'rgb(214,120,44)', 'rgb(224,180,62)', 'rgb(150,96,50)'];
+const AUTUMN_SCARF_DY = 13;
+
+/** 단풍잎 한 장. 골 반경을 얕게(0.55~) 두고 같은 색 stroke 를 덧대야
+ *  96x64 크기에서 뾰족한 별이 아니라 잎으로 읽힌다. */
+function drawMapleLeaf(cx: number, cy: number, s: number, tilt: number): void {
+  const pts: [number, number][] = [
+    [8, 0.66], [26, 0.56], [44, 0.90], [67, 0.55], [90, 1.00],
+    [113, 0.55], [136, 0.90], [154, 0.56], [172, 0.66],
+  ];
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(tilt);
+
+  // 잎자루 — 길면 눈(headTopY-10 ~ -2)까지 내려와 '꽂힌' 모양이 된다
+  ctx.strokeStyle = LEAF_STEM;
+  ctx.lineWidth = 1.3;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(-0.8, -s * 0.30);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(0, s * 0.06);
+  for (const [deg, r] of pts) {
+    const a = (deg * Math.PI) / 180;
+    ctx.lineTo(Math.cos(a) * r * s, Math.sin(a) * r * s);
+  }
+  ctx.closePath();
+  ctx.lineJoin = 'round';
+  ctx.fillStyle = MAPLE;
+  ctx.fill();
+  ctx.strokeStyle = MAPLE;
+  ctx.lineWidth = 2.6;
+  ctx.stroke();
+  ctx.strokeStyle = MAPLE_DARK;
+  ctx.lineWidth = 0.8;
+  ctx.stroke();
+
+  // 잎맥
+  ctx.strokeStyle = 'rgba(255, 232, 214, 0.55)';
+  ctx.lineWidth = 0.8;
+  for (const deg of [44, 90, 136]) {
+    const a = (deg * Math.PI) / 180;
+    ctx.beginPath();
+    ctx.moveTo(0, s * 0.12);
+    ctx.lineTo(Math.cos(a) * s * 0.58, Math.sin(a) * s * 0.58);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// 목이 없는 체형이라 얼굴이 아니라 머리 아래 어깨선에 걸쳐야 '두른' 것으로 읽힌다
+function autumnScarfY(bodyY: number): number { return bodyY + AUTUMN_SCARF_DY; }
+
+/** 줄무늬 목도리 한 장 (호출 측 클립으로 앞/뒤 절반만 보이게) */
+function drawAutumnScarfBand(centerX: number, bodyY: number): void {
+  const sy = autumnScarfY(bodyY);
+  const outerW = 40, outerH = 11;
+  const panels = 9, pw = outerW / panels;
+
+  // 세로 패널로 니트 줄무늬 (파라솔 캐노피와 같은 트릭)
+  for (let i = 0; i < panels; i++) {
+    ctx.save();
+    const sx = centerX - outerW / 2 + i * pw;
+    ctx.beginPath();
+    ctx.rect(sx, sy - outerH, pw + 0.5, outerH * 2);
+    ctx.clip();
+    ctx.fillStyle = i % 2 === 0 ? SCARF_A : SCARF_B;
+    ctx.beginPath();
+    ctx.ellipse(centerX, sy, outerW / 2, outerH / 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.14)';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.ellipse(centerX, sy, outerW / 2, outerH / 2, 0, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+/** 목도리 뒤쪽(위 절반) — 몸통 그리기 전에 호출 */
+function drawAutumnScarfBack(centerX: number, bodyY: number): void {
+  const sy = autumnScarfY(bodyY);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, sy, W, H - sy);
+  ctx.clip();
+  drawAutumnScarfBand(centerX, bodyY);
+  ctx.restore();
+}
+
+function drawAutumnAccessory(centerX: number, bodyY: number, headTopY: number): void {
+  // 목도리 앞쪽(아래 절반) — 머리 그린 뒤라 '두른' 느낌
+  const sy = autumnScarfY(bodyY);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, W, sy);
+  ctx.clip();
+  drawAutumnScarfBand(centerX, bodyY);
+  ctx.restore();
+
+  // 늘어진 꼬리 (걸음에 맞춰 흔들림)
+  const sway = Math.sin(animationFrame * 0.16) * 1.6;
+  const tw = 6.5, tlen = 10;
+  ctx.save();
+  ctx.translate(centerX + 10 + sway * 0.4, sy - 1);
+  ctx.rotate(sway * 0.045);
+  for (let i = 0; i < 4; i++) {
+    ctx.fillStyle = i % 2 === 0 ? SCARF_A : SCARF_B;
+    fillRoundRect(-tw / 2, -(i + 1) * (tlen / 4), tw, tlen / 4 + 0.4, 1.2);
+  }
+  ctx.strokeStyle = SCARF_B;
+  ctx.lineWidth = 1;
+  ctx.lineCap = 'round';
+  for (let f = -1; f <= 1; f++) {
+    ctx.beginPath();
+    ctx.moveTo(f * 2.2, -tlen);
+    ctx.lineTo(f * 2.2 + sway * 0.25, -tlen - 3);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // 단풍잎 (머리 위로 띄움)
+  const tilt = Math.sin(animationFrame * 0.09) * 0.10 - 0.30;
+  drawMapleLeaf(centerX + 8.5, headTopY + 2.5, 9.5, tilt);
+}
+
+function updateAndDrawLeaves(): void {
+  // 새 낙엽 추가
+  if (leaves.length < MAX_LEAVES && animationFrame % 11 === 0) {
+    leaves.push({
+      x: -10 + Math.random() * (W + 20),
+      y: H + 6,
+      size: 3.0 + Math.random() * 2.4,
+      speed: 0.30 + Math.random() * 0.45,
+      swayPhase: Math.random() * 2 * Math.PI,
+      rotation: Math.random() * 2 * Math.PI,
+      alpha: 0.55 + Math.random() * 0.4,
+    });
+  }
+
+  for (let i = leaves.length - 1; i >= 0; i--) {
+    const leaf = leaves[i];
+    leaf.y -= leaf.speed;
+    leaf.x += Math.sin(leaf.swayPhase + leaf.y * 0.06) * 0.85;
+    leaf.rotation += 0.04 + leaf.speed * 0.06;
+
+    if (leaf.y < -10) { leaves.splice(i, 1); continue; }
+
+    // 색은 Petal 타입을 건드리지 않으려고 swayPhase 에서 뽑는다 (macOS 와 동일)
+    const idx = Math.floor(leaf.swayPhase * 100) % LEAF_COLORS.length;
+    // cos(rotation) 으로 가로 폭을 줄여 뒤집히며 떨어지는 느낌
+    const flip = Math.abs(Math.cos(leaf.rotation));
+    const w = leaf.size * (0.35 + flip * 0.65);
+    const h = leaf.size * 0.78;
+
+    ctx.save();
+    ctx.globalAlpha = leaf.alpha;
+    ctx.translate(leaf.x, leaf.y);
+    ctx.rotate(Math.sin(leaf.swayPhase + leaf.y * 0.05) * 0.5);
+    ctx.fillStyle = LEAF_COLORS[idx];
+    ctx.beginPath();
+    ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(70, 40, 20, 0.35)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(-w / 2, 0);
+    ctx.lineTo(w / 2, 0);
+    ctx.stroke();
+    ctx.restore();
+    ctx.globalAlpha = 1;
   }
 }
 

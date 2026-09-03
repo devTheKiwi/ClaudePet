@@ -156,6 +156,14 @@ class SpeechBubbleView: NSView {
             bgColor = NSColor(red: 1.0, green: 0.95, blue: 0.96, alpha: 1.0)     // 연한 핑크
             borderColor = NSColor(red: 0.95, green: 0.75, blue: 0.80, alpha: 1.0) // 핑크 테두리
             tailColor = bgColor
+        } else if skin == .summer {
+            bgColor = NSColor(red: 0.922, green: 0.973, blue: 1.0, alpha: 1.0)   // 연한 아쿠아
+            borderColor = NSColor(red: 0.698, green: 0.878, blue: 0.969, alpha: 1.0)
+            tailColor = bgColor
+        } else if skin == .autumn {
+            bgColor = NSColor(red: 1.0, green: 0.97, blue: 0.90, alpha: 1.0)      // 연한 앰버
+            borderColor = NSColor(red: 0.91, green: 0.76, blue: 0.51, alpha: 1.0) // 앰버 테두리
+            tailColor = bgColor
         } else {
             bgColor = NSColor.white
             borderColor = NSColor(white: 0.85, alpha: 1.0)

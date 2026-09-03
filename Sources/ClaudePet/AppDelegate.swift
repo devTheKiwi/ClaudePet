@@ -680,6 +680,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             case .basic: displayName = L10n.skinBasic
             case .spring: displayName = L10n.skinSpring
             case .summer: displayName = L10n.skinSummer
+            case .autumn: displayName = L10n.skinAutumn
             }
             let item = NSMenuItem(title: displayName, action: #selector(changeSkin(_:)), keyEquivalent: "")
             item.target = self
@@ -766,6 +767,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         switch session.petWindow.petView.skin {
         case .summer: pool += L10n.summerMessages + L10n.summerMessages   // 여름 멘트 자주
         case .spring: pool += L10n.springMessages + L10n.springMessages   // 봄 멘트 자주
+        case .autumn: pool += L10n.autumnMessages + L10n.autumnMessages   // 가을 멘트 자주
         case .basic: break
         }
         if let message = pool.randomElement() {

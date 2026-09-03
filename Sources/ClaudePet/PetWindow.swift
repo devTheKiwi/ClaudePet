@@ -13,6 +13,7 @@ enum PetSkinType: String, CaseIterable {
     case basic = "기본"
     case spring = "봄 에디션 🌸"
     case summer = "여름 에디션 🍉"
+    case autumn = "가을 에디션 🍁"
 }
 
 // MARK: - Petal Particle (봄 에디션용)
@@ -187,6 +188,10 @@ class PetView: NSView {
     private var bubbles: [Petal] = []
     private let maxBubbles = 8
 
+    // 가을 에디션 파티클 (떨어지는 낙엽)
+    private var leaves: [Petal] = []
+    private let maxLeaves = 8
+
     init(frame: NSRect, color: PetColor) {
         self.bodyColor = color.body
         self.bodyDarkColor = color.bodyDark
@@ -324,6 +329,11 @@ class PetView: NSView {
             drawSummerTubeBack(centerX: centerX, bodyY: bodyY)
         }
 
+        // === 가을: 목도리 뒤쪽 (목 뒤로 감김) ===
+        if skin == .autumn {
+            drawAutumnScarfBack(centerX: centerX, bodyY: bodyY)
+        }
+
         // === 몸통 ===
         bodyColor.setFill()
         let bodyWidth: CGFloat = 40
@@ -385,6 +395,199 @@ class PetView: NSView {
             drawSummerAccessory(centerX: centerX, bodyY: bodyY, headTopY: headY + headHeight)
             updateAndDrawBubbles()
         }
+        if skin == .autumn {
+            drawAutumnAccessory(centerX: centerX, bodyY: bodyY, headTopY: headY + headHeight)
+            updateAndDrawLeaves()
+        }
+    }
+
+    // MARK: - Autumn Skin
+
+    private let mapleColor     = NSColor(red: 0.753, green: 0.263, blue: 0.165, alpha: 1)
+    private let mapleDarkColor = NSColor(red: 0.549, green: 0.173, blue: 0.110, alpha: 1)
+    private let leafStemColor  = NSColor(red: 0.471, green: 0.306, blue: 0.173, alpha: 1)
+    private let scarfColorA    = NSColor(red: 0.698, green: 0.243, blue: 0.173, alpha: 1)
+    private let scarfColorB    = NSColor(red: 0.871, green: 0.776, blue: 0.620, alpha: 1)
+    private let autumnLeafColors: [NSColor] = [
+        NSColor(red: 0.753, green: 0.263, blue: 0.165, alpha: 1),   // 단풍 빨강
+        NSColor(red: 0.839, green: 0.471, blue: 0.173, alpha: 1),   // 주황
+        NSColor(red: 0.878, green: 0.706, blue: 0.243, alpha: 1),   // 은행 노랑
+        NSColor(red: 0.588, green: 0.376, blue: 0.196, alpha: 1),   // 갈참
+    ]
+
+    /// 단풍잎 한 장. 골 반경을 얕게(0.55~) 두고 같은 색 stroke 를 덧대야
+    /// 96x64 크기에서 뾰족한 별이 아니라 잎으로 읽힌다.
+    private func drawMapleLeaf(cx: CGFloat, cy: CGFloat, s: CGFloat, tilt: CGFloat) {
+        let pts: [(CGFloat, CGFloat)] = [
+            (8, 0.66), (26, 0.56), (44, 0.90), (67, 0.55), (90, 1.00),
+            (113, 0.55), (136, 0.90), (154, 0.56), (172, 0.66),
+        ]
+        NSGraphicsContext.saveGraphicsState()
+        let xf = NSAffineTransform()
+        xf.translateX(by: cx, yBy: cy)
+        xf.rotate(byRadians: tilt)
+        xf.concat()
+
+        // 잎자루 — 길면 눈(headTopY-10 ~ -2)까지 내려와 '꽂힌' 모양이 된다
+        leafStemColor.setStroke()
+        let stem = NSBezierPath()
+        stem.move(to: NSPoint(x: 0, y: 0))
+        stem.line(to: NSPoint(x: -0.8, y: -s * 0.30))
+        stem.lineWidth = 1.3
+        stem.lineCapStyle = .round
+        stem.stroke()
+
+        let leaf = NSBezierPath()
+        leaf.move(to: NSPoint(x: 0, y: s * 0.06))
+        for (deg, r) in pts {
+            let a = deg * .pi / 180
+            leaf.line(to: NSPoint(x: cos(a) * r * s, y: sin(a) * r * s))
+        }
+        leaf.close()
+        leaf.lineJoinStyle = .round
+        leaf.lineCapStyle = .round
+        mapleColor.setFill()
+        leaf.fill()
+        mapleColor.setStroke()
+        leaf.lineWidth = 2.6
+        leaf.stroke()
+        mapleDarkColor.setStroke()
+        leaf.lineWidth = 0.8
+        leaf.stroke()
+
+        // 잎맥
+        NSColor(red: 1.0, green: 0.91, blue: 0.84, alpha: 0.55).setStroke()
+        for deg in [CGFloat(44), CGFloat(90), CGFloat(136)] {
+            let a = deg * .pi / 180
+            let vein = NSBezierPath()
+            vein.move(to: NSPoint(x: 0, y: s * 0.12))
+            vein.line(to: NSPoint(x: cos(a) * s * 0.58, y: sin(a) * s * 0.58))
+            vein.lineWidth = 0.8
+            vein.stroke()
+        }
+        NSGraphicsContext.restoreGraphicsState()
+    }
+
+    // 목도리 중심 y — 목이 없는 체형이라 얼굴이 아니라 머리 아래 어깨선에 걸쳐야 '두른' 것으로 읽힌다
+    private func autumnScarfY(bodyY: CGFloat) -> CGFloat { bodyY + 13 }
+
+    /// 줄무늬 목도리 한 장 (호출 측 클립으로 앞/뒤 절반만 보이게)
+    private func drawAutumnScarfBand(centerX: CGFloat, bodyY: CGFloat) {
+        let sy = autumnScarfY(bodyY: bodyY)
+        let outerW: CGFloat = 40, outerH: CGFloat = 11
+        let panels = 9
+        let pw = outerW / CGFloat(panels)
+        let oval = NSRect(x: centerX - outerW / 2, y: sy - outerH / 2, width: outerW, height: outerH)
+
+        // 세로 패널로 니트 줄무늬 (파라솔 캐노피와 같은 트릭)
+        for i in 0..<panels {
+            NSGraphicsContext.saveGraphicsState()
+            let sx = centerX - outerW / 2 + CGFloat(i) * pw
+            NSBezierPath(rect: NSRect(x: sx, y: sy - outerH, width: pw + 0.5, height: outerH * 2)).addClip()
+            (i % 2 == 0 ? scarfColorA : scarfColorB).setFill()
+            NSBezierPath(ovalIn: oval).fill()
+            NSGraphicsContext.restoreGraphicsState()
+        }
+        NSColor(white: 0.0, alpha: 0.14).setStroke()
+        let edge = NSBezierPath(ovalIn: oval)
+        edge.lineWidth = 0.8
+        edge.stroke()
+    }
+
+    /// 목도리 뒤쪽(위 절반) — 몸통 그리기 전에 호출
+    private func drawAutumnScarfBack(centerX: CGFloat, bodyY: CGFloat) {
+        let sy = autumnScarfY(bodyY: bodyY)
+        NSGraphicsContext.saveGraphicsState()
+        NSBezierPath(rect: NSRect(x: 0, y: sy, width: bounds.width, height: bounds.height - sy)).addClip()
+        drawAutumnScarfBand(centerX: centerX, bodyY: bodyY)
+        NSGraphicsContext.restoreGraphicsState()
+    }
+
+    private func drawAutumnAccessory(centerX: CGFloat, bodyY: CGFloat, headTopY: CGFloat) {
+        // === 목도리 앞쪽(아래 절반) — 머리 그린 뒤라 '두른' 느낌 ===
+        let sy = autumnScarfY(bodyY: bodyY)
+        NSGraphicsContext.saveGraphicsState()
+        NSBezierPath(rect: NSRect(x: 0, y: 0, width: bounds.width, height: sy)).addClip()
+        drawAutumnScarfBand(centerX: centerX, bodyY: bodyY)
+        NSGraphicsContext.restoreGraphicsState()
+
+        // === 늘어진 꼬리 (걸음에 맞춰 흔들림) ===
+        let sway = sin(CGFloat(animationFrame) * 0.16) * 1.6
+        let tw: CGFloat = 6.5, tlen: CGFloat = 10
+        NSGraphicsContext.saveGraphicsState()
+        let tailXF = NSAffineTransform()
+        tailXF.translateX(by: centerX + 10 + sway * 0.4, yBy: sy - 1)
+        tailXF.rotate(byRadians: sway * 0.045)
+        tailXF.concat()
+        for i in 0..<4 {
+            (i % 2 == 0 ? scarfColorA : scarfColorB).setFill()
+            NSBezierPath(roundedRect: NSRect(x: -tw / 2, y: -CGFloat(i + 1) * (tlen / 4),
+                                             width: tw, height: tlen / 4 + 0.4),
+                         xRadius: 1.2, yRadius: 1.2).fill()
+        }
+        scarfColorB.setStroke()
+        for f in [CGFloat(-1), CGFloat(0), CGFloat(1)] {
+            let fringe = NSBezierPath()
+            fringe.move(to: NSPoint(x: f * 2.2, y: -tlen))
+            fringe.line(to: NSPoint(x: f * 2.2 + sway * 0.25, y: -tlen - 3))
+            fringe.lineWidth = 1
+            fringe.lineCapStyle = .round
+            fringe.stroke()
+        }
+        NSGraphicsContext.restoreGraphicsState()
+
+        // === 단풍잎 (머리 위로 띄움) ===
+        let tilt = sin(CGFloat(animationFrame) * 0.09) * 0.10 - 0.30
+        drawMapleLeaf(cx: centerX + 8.5, cy: headTopY + 2.5, s: 9.5, tilt: tilt)
+    }
+
+    private func updateAndDrawLeaves() {
+        // 새 낙엽 추가
+        if leaves.count < maxLeaves && animationFrame % 11 == 0 {
+            leaves.append(Petal(
+                x: CGFloat.random(in: -10...bounds.width + 10),
+                y: bounds.height + 6,
+                size: CGFloat.random(in: 3.0...5.4),
+                speed: CGFloat.random(in: 0.30...0.75),
+                swayPhase: CGFloat.random(in: 0...(2 * .pi)),
+                rotation: CGFloat.random(in: 0...(2 * .pi)),
+                alpha: CGFloat.random(in: 0.55...0.95)
+            ))
+        }
+
+        var active: [Petal] = []
+        for var leaf in leaves {
+            leaf.y -= leaf.speed
+            leaf.x += sin(leaf.swayPhase + leaf.y * 0.06) * 0.85
+            leaf.rotation += 0.04 + leaf.speed * 0.06
+
+            if leaf.y > -10 {
+                // 색은 Petal 구조체를 건드리지 않으려고 swayPhase 에서 뽑는다
+                let idx = Int(leaf.swayPhase * 100) % autumnLeafColors.count
+                // cos(rotation) 으로 가로 폭을 줄여 뒤집히며 떨어지는 느낌
+                let flip = abs(cos(leaf.rotation))
+                let w = leaf.size * (0.35 + flip * 0.65)
+                let h = leaf.size * 0.78
+
+                NSGraphicsContext.saveGraphicsState()
+                let leafXF = NSAffineTransform()
+                leafXF.translateX(by: leaf.x, yBy: leaf.y)
+                leafXF.rotate(byRadians: sin(leaf.swayPhase + leaf.y * 0.05) * 0.5)
+                leafXF.concat()
+                autumnLeafColors[idx].withAlphaComponent(leaf.alpha).setFill()
+                NSBezierPath(ovalIn: NSRect(x: -w / 2, y: -h / 2, width: w, height: h)).fill()
+                NSColor(red: 0.27, green: 0.16, blue: 0.08, alpha: 0.35).setStroke()
+                let vein = NSBezierPath()
+                vein.move(to: NSPoint(x: -w / 2, y: 0))
+                vein.line(to: NSPoint(x: w / 2, y: 0))
+                vein.lineWidth = 0.5
+                vein.stroke()
+                NSGraphicsContext.restoreGraphicsState()
+
+                active.append(leaf)
+            }
+        }
+        leaves = active
     }
 
     // MARK: - Time Badge

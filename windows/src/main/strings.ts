@@ -150,6 +150,18 @@ export const summerMessages = isKorean
      'I want ice cream 🍦', 'Watermelon, anyone? 🍉', "Don't forget sunscreen~ 🧴",
      'I miss the beach 🌊', "Stay hydrated, it's hot! 💧"];
 
+export const autumnMessages = isKorean
+  ? ['머리에 단풍잎 앉았어~ 🍁', '낙엽 바스락바스락~ 🍂', '목도리 두르니까 포근해 🧣',
+     '군고구마 먹고 싶다... 🍠', '하늘 높고... 나는 살찌고 🍽️', '어젯밤 보름달 봤어? 🌕',
+     '찬바람 분다, 겉옷 챙겨! 🧥', '나 가을 타나 봐~ 🍂',
+     '선선하니까 코딩 잘된다~ 💻', '낙엽 좀 봐! 우리 색깔 비슷해~ 🍂',
+     '해가 빨리 지네... 벌써 깜깜해 🌇', '독서의 계절이래~ 근데 졸려 📖']
+  : ['A maple leaf landed on my head~ 🍁', 'Crunch, crunch — leaf piles! 🍂', 'This scarf is so cozy 🧣',
+     'I could go for a roasted sweet potato... 🍠', 'Sweater weather, snack weather 🍽️', 'Did you see the full moon? 🌕',
+     'Cold wind! Grab a jacket 🧥', "Autumn's making me sentimental~ 🍂",
+     'Crisp air — great coding weather~ 💻', 'Look at the leaves! Same color as me~ 🍂',
+     'The sun sets so early now... 🌇', "They say it's reading season~ but I'm sleepy 📖"];
+
 export const springMessages = isKorean
   ? ['벚꽃이 예쁘다~ 🌸', '봄바람 살랑살랑~ 🍃', '꽃놀이 가고 싶다!',
      '새싹이 쏙 돋았어 🌱', '봄이라 그런가 나른해~', '꽃가루 조심해! 🤧']
@@ -209,10 +221,12 @@ export function desktopTimeAlert(mins: number): string[] {
 export const skinBasic  = isKorean ? '기본' : 'Basic';
 export const skinSpring = isKorean ? '봄 에디션 🌸' : 'Spring 🌸';
 export const skinSummer = isKorean ? '여름 에디션 🍉' : 'Summer 🍉';
-export const skinChanged = (skin: 'basic' | 'spring' | 'summer'): string => {
+export const skinAutumn = isKorean ? '가을 에디션 🍁' : 'Autumn 🍁';
+export const skinChanged = (skin: 'basic' | 'spring' | 'summer' | 'autumn'): string => {
   switch (skin) {
     case 'spring': return isKorean ? '봄이 왔어! 🌸' : 'Spring is here! 🌸';
     case 'summer': return isKorean ? '여름이다! 물놀이 가자~ 🍉' : "Summer time! Let's splash~ 🍉";
+    case 'autumn': return isKorean ? '가을이다! 단풍 보러 가자~ 🍁' : "Autumn is here! Let's see the leaves~ 🍁";
     default:       return isKorean ? '기본 스킨으로 돌아왔어!' : 'Back to default skin!';
   }
 };

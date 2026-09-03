@@ -447,6 +447,7 @@ export class App {
     // idle: 기본 + 모델 + (스킨에 따라) 에디션 멘트를 가중치 있게 섞기
     let pool = [...S.idleMessages, this.modelMessage()];
     if (this.settings.skin === 'summer') pool = pool.concat(S.summerMessages, S.summerMessages);
+    if (this.settings.skin === 'autumn') pool = pool.concat(S.autumnMessages, S.autumnMessages);
     else if (this.settings.skin === 'spring') pool = pool.concat(S.springMessages, S.springMessages);
     this.showSpeech(session, pool[Math.floor(Math.random() * pool.length)]);
   }
@@ -623,7 +624,7 @@ export class App {
     }));
 
     const skinSubmenu = new Menu();
-    for (const [name, key] of [[S.skinBasic, 'basic'], [S.skinSpring, 'spring'], [S.skinSummer, 'summer']] as const) {
+    for (const [name, key] of [[S.skinBasic, 'basic'], [S.skinSpring, 'spring'], [S.skinSummer, 'summer'], [S.skinAutumn, 'autumn']] as const) {
       skinSubmenu.append(new MenuItem({
         label: name,
         type: 'radio',

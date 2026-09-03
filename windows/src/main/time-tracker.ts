@@ -81,11 +81,11 @@ export class UserSettings {
     this.data = this.load();
   }
 
-  get skin(): 'basic' | 'spring' | 'summer' {
+  get skin(): 'basic' | 'spring' | 'summer' | 'autumn' {
     const s = this.data.skin;
-    return (s === 'spring' || s === 'summer') ? s : 'basic';
+    return (s === 'spring' || s === 'summer' || s === 'autumn') ? s : 'basic';
   }
-  set skin(v: 'basic' | 'spring' | 'summer') {
+  set skin(v: 'basic' | 'spring' | 'summer' | 'autumn') {
     this.data.skin = v;
     this.save();
   }

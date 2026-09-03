@@ -122,6 +122,20 @@ struct L10n {
                "I miss the beach 🌊", "Stay hydrated, it's hot! 💧"]
     }
 
+    static var autumnMessages: [String] {
+        isKorean
+            ? ["머리에 단풍잎 앉았어~ 🍁", "낙엽 바스락바스락~ 🍂", "목도리 두르니까 포근해 🧣",
+               "군고구마 먹고 싶다... 🍠", "하늘 높고... 나는 살찌고 🍽️", "어젯밤 보름달 봤어? 🌕",
+               "찬바람 분다, 겉옷 챙겨! 🧥", "나 가을 타나 봐~ 🍂",
+               "선선하니까 코딩 잘된다~ 💻", "낙엽 좀 봐! 우리 색깔 비슷해~ 🍂",
+               "해가 빨리 지네... 벌써 깜깜해 🌇", "독서의 계절이래~ 근데 졸려 📖"]
+            : ["A maple leaf landed on my head~ 🍁", "Crunch, crunch — leaf piles! 🍂", "This scarf is so cozy 🧣",
+               "I could go for a roasted sweet potato... 🍠", "Sweater weather, snack weather 🍽️", "Did you see the full moon? 🌕",
+               "Cold wind! Grab a jacket 🧥", "Autumn's making me sentimental~ 🍂",
+               "Crisp air — great coding weather~ 💻", "Look at the leaves! Same color as me~ 🍂",
+               "The sun sets so early now... 🌇", "They say it's reading season~ but I'm sleepy 📖"]
+    }
+
     static var springMessages: [String] {
         isKorean
             ? ["벚꽃이 예쁘다~ 🌸", "봄바람 살랑살랑~ 🍃", "꽃놀이 가고 싶다!",
@@ -165,10 +179,12 @@ struct L10n {
     static var skinBasic: String { isKorean ? "기본" : "Basic" }
     static var skinSpring: String { isKorean ? "봄 에디션 🌸" : "Spring 🌸" }
     static var skinSummer: String { isKorean ? "여름 에디션 🍉" : "Summer 🍉" }
+    static var skinAutumn: String { isKorean ? "가을 에디션 🍁" : "Autumn 🍁" }
     static let skinChanged: (PetSkinType) -> String = { skin in
         switch skin {
         case .spring: return isKorean ? "봄이 왔어! 🌸" : "Spring is here! 🌸"
         case .summer: return isKorean ? "여름이다! 물놀이 가자~ 🍉" : "Summer time! Let's splash~ 🍉"
+        case .autumn: return isKorean ? "가을이다! 단풍 보러 가자~ 🍁" : "Autumn is here! Let's see the leaves~ 🍁"
         case .basic: return isKorean ? "기본 스킨으로 돌아왔어!" : "Back to default skin!"
         }
     }
