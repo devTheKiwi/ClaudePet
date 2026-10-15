@@ -2,13 +2,17 @@
  * i18n strings — Korean/English auto-detection.
  * Mirrors Sources/ClaudePet/Strings.swift.
  *
- * Language is detected once at startup via app.getLocale().
- * If the locale starts with "ko", Korean strings are used; otherwise English.
+ * Language is detected once at startup from the OS preferred language list
+ * (same as Locale.preferredLanguages.first on macOS).
+ * If it starts with "ko", Korean strings are used; otherwise English.
+ *
+ * app.getLocale() can't be used here: this module is evaluated before `ready`,
+ * when it still returns "" — which made Korean PCs always fall back to English.
  */
 
 import { app } from 'electron';
 
-const isKorean: boolean = app.getLocale().startsWith('ko');
+const isKorean: boolean = (app.getPreferredSystemLanguages()[0] ?? 'en').startsWith('ko');
 
 // MARK: - Greeting
 

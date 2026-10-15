@@ -5,14 +5,15 @@
  * Windows 에선 자동 업데이트 대신 GitHub Releases 페이지로 이동.
  */
 
-import { shell } from 'electron';
+import { app, shell } from 'electron';
 import * as S from './strings';
 
 const REPO_API = 'https://api.github.com/repos/devTheKiwi/ClaudePet/releases/latest';
 const RELEASES_PAGE = 'https://github.com/devTheKiwi/ClaudePet/releases/latest';
 
 export class UpdateChecker {
-  public readonly currentVersion = '2.7.0';
+  /** package.json version 을 그대로 사용 — 하드코딩하면 릴리스 때 빼먹기 쉬움 (v2.8.0 이 2.7.0 으로 남아 업데이트 알림이 안 꺼졌음) */
+  public readonly currentVersion = app.getVersion();
   public latestVersion: string | null = null;
   public updateAvailable = false;
   public onResult: ((message: string) => void) | null = null;
