@@ -56,6 +56,9 @@ export class PetWindow {
         preload: path.join(__dirname, '..', 'preload', 'pet-preload.js'),
         contextIsolation: true,
         nodeIntegration: false,
+        // 걷기·애니메이션은 렌더러 타이머(15fps)로 돈다. Windows 가 이 창을 '안 보이는 창'으로 판단하면
+        // 타이머가 1초에 1번으로 느려져 펫이 한 걸음씩 끊겨 걷는다 → 항상 떠 있는 펫이라 끈다.
+        backgroundThrottling: false,
       },
     });
 

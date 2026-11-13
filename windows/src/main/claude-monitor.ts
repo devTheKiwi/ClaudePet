@@ -25,8 +25,15 @@ export interface SessionInfo {
 // 맥 버전(ClaudeMonitor.swift)과 동일하게 2시간으로 맞춤.
 const STALE_TIMEOUT_SEC = 7200; // 2시간
 
+// Desktop 감지(PowerShell) 최소 간격. PowerShell 은 한 번 띄우는 데 0.5~2초씩 걸려서,
+// 2초마다 새로 띄우면 느린 PC 에선 앞의 것이 끝나기 전에 다음 것이 떠 계속 쌓이고 CPU 를 잡아먹는다.
+const DESKTOP_CHECK_INTERVAL_MS = 10_000;
+
 export class ClaudeMonitor {
   private tmpDir: string;
+  private desktopRunning = false;
+  private desktopCheckedAt = 0;
+  private desktopChecking = false;
 
   constructor() {
     this.tmpDir = os.tmpdir();
@@ -114,8 +121,23 @@ export class ClaudeMonitor {
     return sessions;
   }
 
+  /** Claude Desktop 실행 여부 — 10초에 한 번만, 겹치지 않게 확인하고 그 사이엔 마지막 결과를 돌려준다 */
+  async isDesktopRunning(): Promise<boolean> {
+    if (this.desktopChecking || Date.now() - this.desktopCheckedAt < DESKTOP_CHECK_INTERVAL_MS) {
+      return this.desktopRunning;
+    }
+    this.desktopChecking = true;
+    try {
+      this.desktopRunning = await this.queryDesktopProcess();
+    } finally {
+      this.desktopCheckedAt = Date.now();
+      this.desktopChecking = false;
+    }
+    return this.desktopRunning;
+  }
+
   /**
-   * Claude Desktop 프로세스가 실행 중인지 확인.
+   * Claude Desktop 프로세스가 실행 중인지 PowerShell 로 확인.
    *
    * 주의: Windows 에선 Claude Code CLI 도 `claude.exe` 라는 이름으로 떠있다.
    * 따라서 단순 프로세스 이름 매칭만으론 구분이 안 된다.
@@ -126,7 +148,7 @@ export class ClaudeMonitor {
    *   - Claude Code CLI:  C:\Users\...\npm\node_modules\@anthropic-ai\claude-code\...
    *   - Claude Desktop:   C:\Users\...\AppData\Local\AnthropicClaude\Claude.exe (또는 Program Files)
    */
-  async isDesktopRunning(): Promise<boolean> {
+  private queryDesktopProcess(): Promise<boolean> {
     return new Promise((resolve) => {
       const { execFile } = require('child_process');
       const ps = `Get-CimInstance Win32_Process -Filter "name='claude.exe'" | ` +
@@ -135,7 +157,7 @@ export class ClaudeMonitor {
       execFile(
         'powershell',
         ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', ps],
-        { windowsHide: true },
+        { windowsHide: true, timeout: 15_000 }, // 멈춘 PowerShell 이 감지를 영영 막지 않게
         (err: any, stdout: string) => {
           if (err) {
             resolve(false);

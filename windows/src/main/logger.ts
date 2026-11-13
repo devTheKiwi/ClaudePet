@@ -6,6 +6,7 @@
  * 매 write 마다 사이즈 체크해서 256KB 넘으면 자동 truncate (무한 누적 방지).
  */
 
+import { app } from 'electron';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -61,12 +62,19 @@ export const log = {
   path: LOG_PATH,
 };
 
-/** uncaughtException / unhandledRejection 을 로그로 남기기 */
+/** uncaughtException / unhandledRejection, 렌더러·GPU 프로세스 종료를 로그로 남기기 */
 export function installCrashHandlers(): void {
   process.on('uncaughtException', (err) => {
     log.error('uncaughtException:', err);
   });
   process.on('unhandledRejection', (reason) => {
     log.error('unhandledRejection:', reason);
+  });
+  // 렌더러/GPU 프로세스가 죽으면 펫 화면이 그대로 굳는다 — 원인 추적용
+  app.on('render-process-gone', (_e, _wc, details) => {
+    log.error('render-process-gone:', details);
+  });
+  app.on('child-process-gone', (_e, details) => {
+    log.error('child-process-gone:', details);
   });
 }

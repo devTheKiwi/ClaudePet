@@ -24,6 +24,12 @@ struct TokenUsage {
 class TokenTracker {
     private let claudeProjectsDir: String
 
+    // 오늘 사용량 캐시 (todayUsage 참고) — 메인 스레드에서만 읽고 쓴다
+    private let todayQueue = DispatchQueue(label: "com.claudepet.todayUsage", qos: .utility)
+    private var todayCache = TokenUsage()
+    private var todayCacheTime = Date.distantPast
+    private var todayRefreshing = false
+
     init() {
         claudeProjectsDir = NSHomeDirectory() + "/.claude/projects"
     }
@@ -71,8 +77,26 @@ class TokenTracker {
         return nil
     }
 
-    /// 오늘 전체 토큰 사용량
+    /// 오늘 전체 토큰 사용량 — 메인 스레드에서 2초마다 불린다.
+    /// 오늘 JSONL 전체 파싱은 수십 MB라 1초 가까이 걸려서, 메인 스레드에서 돌리면 그동안 펫 애니메이션이 멈춘다
+    /// (한 발짝 걷고 멈추기 반복 + CPU 50%). 그래서 마지막 값을 바로 돌려주고, 30초 지났으면 백그라운드에서 다시 계산한다.
     func todayUsage() -> TokenUsage {
+        if !todayRefreshing && Date().timeIntervalSince(todayCacheTime) >= 30 {
+            todayRefreshing = true
+            todayQueue.async { [weak self] in
+                guard let self = self else { return }
+                let usage = self.computeTodayUsage()
+                DispatchQueue.main.async {
+                    self.todayCache = usage
+                    self.todayCacheTime = Date()
+                    self.todayRefreshing = false
+                }
+            }
+        }
+        return todayCache
+    }
+
+    private func computeTodayUsage() -> TokenUsage {
         let fm = FileManager.default
         var total = TokenUsage()
 
