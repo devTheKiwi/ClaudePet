@@ -91,4 +91,4 @@ rmdir /s "%USERPROFILE%\.claudepet-windows"
 
 ## License
 
-MIT
+[MIT](LICENSE)
