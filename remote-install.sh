@@ -92,17 +92,21 @@ APP_VERSION=$(git ls-remote --tags origin 2>/dev/null | sed -n 's#.*refs/tags/v\
 [ -z "$APP_VERSION" ] && APP_VERSION=$(git tag -l 'v*' 2>/dev/null | sort -V | tail -1 | sed 's/^v//')
 [ -z "$APP_VERSION" ] && APP_VERSION="0.0.0"
 
+# Swift 버전에 따라 바이너리 경로가 다름 (Swift 6.4+ 는 .build/out/Products/Release)
+# → SwiftPM 에게 직접 묻고, 없으면 대소문자 무시 find.
+# 기존 앱을 지우기 전에 찾아야, 실패해도 쓰던 앱이 빈 껍데기로 남지 않는다.
+BINARY="$(swift build -c release --show-bin-path 2>/dev/null | tail -1)/ClaudePet"
+[ -f "$BINARY" ] || BINARY=$(find .build -ipath "*/release/ClaudePet" -not -path "*.dSYM*" -type f | head -1)
+if [ -z "$BINARY" ] || [ ! -f "$BINARY" ]; then
+    echo -e "${RED}  빌드 바이너리를 찾을 수 없습니다. (기존 앱은 그대로 둡니다)${NC}"
+    rm -rf "$TMP_DIR"
+    exit 1
+fi
+
 mkdir -p "$APP_DIR"
 rm -rf "$APP_BUNDLE"
 mkdir -p "$APP_BUNDLE/Contents/MacOS"
 mkdir -p "$APP_BUNDLE/Contents/Resources"
-
-# Swift 버전에 따라 바이너리 경로가 다를 수 있음
-BINARY=$(find .build -path "*/release/ClaudePet" -not -path "*.dSYM*" -type f | head -1)
-if [ -z "$BINARY" ]; then
-    echo -e "${RED}  빌드 바이너리를 찾을 수 없습니다.${NC}"
-    exit 1
-fi
 cp "$BINARY" "$APP_BUNDLE/Contents/MacOS/ClaudePet"
 
 cat > "$APP_BUNDLE/Contents/Info.plist" << PLIST
