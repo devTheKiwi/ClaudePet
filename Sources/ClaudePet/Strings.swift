@@ -211,6 +211,15 @@ struct L10n {
         isKorean ? "📊 오늘 총 작업: \(time)" : "📊 Today: \(time)"
     }
 
+    // MARK: - 펫 배치
+
+    static var menuPlacement: String { isKorean ? "펫 배치" : "Pet placement" }
+    static var menuPetScreen: String { isKorean ? "펫이 지낼 화면" : "Pet screen" }
+    static var screenDock: String { isKorean ? "Dock 있는 화면 (자동)" : "Screen with the Dock (auto)" }
+    static var screenFollow: String { isKorean ? "지금 작업 중인 화면 따라가기" : "Follow the active screen" }
+    static var menuHoverFade: String { isKorean ? "가까이 가면 투명해지기 (⌥ 누르고 클릭)" : "Fade when the cursor is near (⌥-click)" }
+    static var menuGather: String { isKorean ? "세션 많으면 구석에 모여 있기 (3마리 이상)" : "Gather in a corner (3+ pets)" }
+
     // MARK: - 업데이트
 
     static let updateAvailable: (String) -> String = { ver in

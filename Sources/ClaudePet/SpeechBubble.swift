@@ -5,6 +5,14 @@ class SpeechBubbleWindow: NSWindow {
     private let bubbleView: SpeechBubbleView
     private var dismissTimer: Timer?
 
+    /// 커서가 다가오면 펫과 함께 반투명 (AppDelegate.updateHoverFade). 클릭은 원래 통과한다.
+    var hoverFaded = false {
+        didSet {
+            guard hoverFaded != oldValue, isVisible, alphaValue > 0.05 else { return }
+            animator().alphaValue = hoverFaded ? PetWindow.fadedAlpha : 1.0
+        }
+    }
+
     init() {
         let size = NSSize(width: 240, height: 60)
         label = NSTextField(labelWithString: "")
@@ -73,9 +81,9 @@ class SpeechBubbleWindow: NSWindow {
         let windowSize = NSSize(width: bubbleWidth, height: bubbleHeight + 10) // +10 for tail
         let windowOrigin = NSPoint(x: point.x - windowSize.width / 2, y: point.y)
 
-        // 화면 경계 체크
+        // 화면 경계 체크 (펫이 지내는 화면 기준)
         var finalOrigin = windowOrigin
-        if let screen = NSScreen.main {
+        if let screen = PetPlacement.screen {
             let visibleFrame = screen.visibleFrame
             if finalOrigin.x < visibleFrame.origin.x {
                 finalOrigin.x = visibleFrame.origin.x
@@ -94,7 +102,7 @@ class SpeechBubbleWindow: NSWindow {
         self.orderFront(nil)
         NSAnimationContext.runAnimationGroup { context in
             context.duration = 0.3
-            self.animator().alphaValue = 1.0
+            self.animator().alphaValue = self.hoverFaded ? PetWindow.fadedAlpha : 1.0
         }
 
         // persistent가 아닌 경우만 자동 사라짐
@@ -107,7 +115,7 @@ class SpeechBubbleWindow: NSWindow {
 
     func updatePosition(to point: NSPoint) {
         var origin = NSPoint(x: point.x - frame.width / 2, y: point.y)
-        if let screen = NSScreen.main {
+        if let screen = PetPlacement.screen {
             let visibleFrame = screen.visibleFrame
             if origin.x < visibleFrame.origin.x { origin.x = visibleFrame.origin.x }
             if origin.x + frame.width > visibleFrame.maxX { origin.x = visibleFrame.maxX - frame.width }

@@ -128,7 +128,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func spawnDefaultPet() {
         let color = PetColor.palette[0]
-        let screen = NSScreen.main!
+        let screen = PetPlacement.screen ?? NSScreen.main!
         let startX = screen.visibleFrame.midX - 32
 
         let petWindow = PetWindow(sessionId: "default", color: color, startX: startX)
@@ -189,6 +189,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         menu.addItem(NSMenuItem.separator())
+        // 투명 모드에선 클릭이 펫을 통과해 우클릭이 어려우니,
+        // 세션별 정보만 빼고 우클릭 메뉴 항목을 메뉴바에도 둔다
+        menu.addItem(todayWorkItem())
+        if let tokens = todayTokensItem() { menu.addItem(tokens) }
+        menu.addItem(NSMenuItem.separator())
+        settingsMenuItems().forEach { menu.addItem($0) }
+        menu.addItem(NSMenuItem.separator())
 
         // 업데이트 있으면 메뉴바 메뉴에도 실행 항목 노출 (배지 보고 아이콘 눌렀을 때 헤매지 않게)
         if updateChecker.updateAvailable, let ver = updateChecker.latestVersion {
@@ -219,6 +226,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         for (_, session) in sessions {
             session.petWindow.petView.showTimer = showTimerEnabled
         }
+        rebuildStatusMenu()
     }
 
     @objc private func changeSkin(_ sender: NSMenuItem) {
@@ -232,6 +240,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // 저장
         UserDefaults.standard.set(skinType.rawValue, forKey: "claudepet_skin")
+        rebuildStatusMenu()
 
         let msg = L10n.skinChanged(skinType)
         if let session = sessions.values.first {
@@ -256,6 +265,182 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func quitApp() {
         NSApplication.shared.terminate(nil)
+    }
+
+    // MARK: - Shared Menu Items (우클릭 메뉴 · 메뉴바 메뉴 공용)
+
+    private func todayWorkItem() -> NSMenuItem {
+        let totalMins = timeTracker.todayTotalMinutes()
+        return NSMenuItem(title: L10n.menuTodayWork(timeTracker.formatMinutes(totalMins)), action: nil, keyEquivalent: "")
+    }
+
+    /// 오늘 토큰 합계 — todayUsage 는 캐시값이라 메뉴바 메뉴를 2초마다 다시 만들어도 가볍다
+    private func todayTokensItem() -> NSMenuItem? {
+        let todayUsage = tokenTracker.todayUsage()
+        guard todayUsage.totalTokens > 0 else { return nil }
+        let cacheRate = todayUsage.cacheReadTokens > 0 ? Int(Double(todayUsage.cacheReadTokens) / Double(todayUsage.cacheReadTokens + todayUsage.cacheCreationTokens + todayUsage.inputTokens) * 100) : 0
+        let todayLabel = L10n.isKorean ? "🪙 오늘 총" : "🪙 Today"
+        return NSMenuItem(title: "\(todayLabel): \(TokenUsage.formatTokens(todayUsage.totalTokens)) (cache \(cacheRate)%)", action: nil, keyEquivalent: "")
+    }
+
+    /// 작업시간 표시 · 스킨 · 언어 · 펫 배치
+    private func settingsMenuItems() -> [NSMenuItem] {
+        let timerToggle = NSMenuItem(title: L10n.menuWorkTime, action: #selector(toggleTimer), keyEquivalent: "")
+        timerToggle.target = self
+        timerToggle.state = showTimerEnabled ? .on : .off
+
+        // 스킨은 모든 펫이 같이 쓰고 claudepet_skin 에 저장된다
+        let currentSkin = UserDefaults.standard.string(forKey: "claudepet_skin").flatMap(PetSkinType.init(rawValue:)) ?? .basic
+        let skinMenu = NSMenu()
+        for skinType in PetSkinType.allCases {
+            let displayName: String
+            switch skinType {
+            case .basic: displayName = L10n.skinBasic
+            case .spring: displayName = L10n.skinSpring
+            case .summer: displayName = L10n.skinSummer
+            case .autumn: displayName = L10n.skinAutumn
+            }
+            let item = NSMenuItem(title: displayName, action: #selector(changeSkin(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = skinType.rawValue
+            item.state = currentSkin == skinType ? .on : .off
+            skinMenu.addItem(item)
+        }
+        let skinItem = NSMenuItem(title: L10n.menuSkin, action: nil, keyEquivalent: "")
+        skinItem.submenu = skinMenu
+
+        let langMenu = NSMenu()
+        let currentLang = UserDefaults.standard.string(forKey: "claudepet_language") ?? "system"
+        let langOptions: [(value: String, name: String)] = [
+            ("system", L10n.langSystem),
+            ("ko", L10n.langKorean),
+            ("en", L10n.langEnglish),
+        ]
+        for opt in langOptions {
+            let item = NSMenuItem(title: opt.name, action: #selector(changeLanguage(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = opt.value
+            if currentLang == opt.value { item.state = .on }
+            langMenu.addItem(item)
+        }
+        let langItem = NSMenuItem(title: L10n.menuLanguage, action: nil, keyEquivalent: "")
+        langItem.submenu = langMenu
+
+        return [timerToggle, skinItem, langItem, placementMenuItem()]
+    }
+
+    // MARK: - Pet Placement
+
+    /// 우클릭 메뉴와 메뉴바 메뉴에 같이 붙이는 "펫 배치" 서브메뉴
+    private func placementMenuItem() -> NSMenuItem {
+        let menu = NSMenu()
+
+        // 모니터가 여러 대일 때만 화면 선택
+        if NSScreen.screens.count > 1 {
+            let screenMenu = NSMenu()
+            let current = PetPlacement.screenChoice
+            var options: [(value: String, name: String)] = [("dock", L10n.screenDock), ("follow", L10n.screenFollow)]
+            options += NSScreen.screens.map { (PetPlacement.displayID(of: $0), $0.localizedName) }
+            for (index, opt) in options.enumerated() {
+                if index == 2 { screenMenu.addItem(NSMenuItem.separator()) }
+                let item = NSMenuItem(title: opt.name, action: #selector(changePetScreen(_:)), keyEquivalent: "")
+                item.target = self
+                item.representedObject = opt.value
+                item.state = current == opt.value ? .on : .off
+                screenMenu.addItem(item)
+            }
+            let screenItem = NSMenuItem(title: L10n.menuPetScreen, action: nil, keyEquivalent: "")
+            screenItem.submenu = screenMenu
+            menu.addItem(screenItem)
+        }
+
+        let toggles: [(title: String, on: Bool, action: Selector)] = [
+            (L10n.menuHoverFade, PetPlacement.hoverFade, #selector(toggleHoverFade)),
+            (L10n.menuGather, PetPlacement.gather, #selector(toggleGather)),
+        ]
+        for toggle in toggles {
+            let item = NSMenuItem(title: toggle.title, action: toggle.action, keyEquivalent: "")
+            item.target = self
+            item.state = toggle.on ? .on : .off
+            menu.addItem(item)
+        }
+
+        let item = NSMenuItem(title: L10n.menuPlacement, action: nil, keyEquivalent: "")
+        item.submenu = menu
+        return item
+    }
+
+    @objc private func changePetScreen(_ sender: NSMenuItem) {
+        guard let value = sender.representedObject as? String else { return }
+        PetPlacement.screenChoice = value
+        applyPlacement()
+    }
+
+    @objc private func toggleHoverFade() {
+        PetPlacement.hoverFade.toggle()
+        updateHoverFade()
+        rebuildStatusMenu()
+    }
+
+    @objc private func toggleGather() {
+        PetPlacement.gather.toggle()
+        updateGatherHomes()
+        rebuildStatusMenu()
+    }
+
+    /// 화면 설정이 바뀌면 다음 걸음을 기다리지 않고 바로 옮긴다
+    private func applyPlacement() {
+        for (_, session) in sessions {
+            session.petWindow.snapToFloor()
+        }
+        updateGatherHomes()
+        rebuildStatusMenu()
+    }
+
+    /// 커서가 펫(말풍선 포함) 근처에 오면 반투명 + 클릭 통과. ⌥ 를 누르고 있으면 평소처럼 잡힌다.
+    private func updateHoverFade() {
+        // 클릭·드래그 도중엔 상태를 바꾸지 않음 (⌥ 드래그 중 손 떼도 끊기지 않게)
+        guard NSEvent.pressedMouseButtons == 0 else { return }
+        let enabled = PetPlacement.hoverFade
+        let mouse = NSEvent.mouseLocation
+        let holdingOption = NSEvent.modifierFlags.contains(.option)
+
+        for (_, session) in sessions {
+            var zone = session.petWindow.frame
+            if session.speechBubble.isVisible {
+                zone = zone.union(session.speechBubble.frame)
+            }
+            let faded = enabled && !holdingOption && zone.insetBy(dx: -20, dy: -20).contains(mouse)
+            session.petWindow.hoverFaded = faded
+            session.speechBubble.hoverFaded = faded
+        }
+    }
+
+    /// 모여 있기: 펫이 gatherMinimum 마리 이상이면 펫 화면 오른쪽 아래 구석에 오래된 순서로 줄 세운다.
+    /// 간격 72pt — 몸통(40pt)이 옆 펫 창(96pt)에 안 겹쳐서 클릭이 엉뚱한 펫으로 안 간다.
+    /// 권한 요청이 온 펫은 줄 앞(왼쪽)으로 나와서 점프한다.
+    private func updateGatherHomes() {
+        let pets = sessions.values.sorted { $0.sessionStart < $1.sessionStart }
+        guard PetPlacement.gather, pets.count >= PetPlacement.gatherMinimum,
+              let visibleFrame = PetPlacement.screen?.visibleFrame else {
+            for pet in pets { pet.petWindow.homeX = nil }
+            return
+        }
+
+        let spacing: CGFloat = 72
+        let lineRight = visibleFrame.maxX - 96 - 8
+        let lineLeft = lineRight - CGFloat(pets.count - 1) * spacing
+        var slot = 0
+        var front = 0
+        for pet in pets {
+            if pet.lastStatus == .waitingForPermission {
+                pet.petWindow.homeX = max(visibleFrame.minX, lineLeft - 96 - CGFloat(front) * 96)
+                front += 1
+            } else {
+                pet.petWindow.homeX = lineRight - CGFloat(slot) * spacing
+                slot += 1
+            }
+        }
     }
 
     // MARK: - Model Message
@@ -292,13 +477,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Time Tracking
 
     private func startTimeTracking() {
-        // 1초마다 세션 시간 업데이트
+        // 1초마다 세션 시간 업데이트 + Dock 이 보이는 화면 기억 (자동 숨김 대응)
         Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             self?.updateSessionTimes()
+            PetPlacement.refreshDockScreen()
         }
-        // 15fps로 말풍선 위치 추적
+        // 15fps로 말풍선 위치 추적 + 커서 근처 펫 반투명
         Timer.scheduledTimer(withTimeInterval: 1.0 / 15.0, repeats: true) { [weak self] _ in
             self?.updateBubblePositions()
+            self?.updateHoverFade()
         }
     }
 
@@ -431,6 +618,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Desktop 감지
         syncDesktop()
 
+        // 모여 있기 자리 (세션 수·권한 요청 상태가 바뀌면 줄을 다시 세움)
+        updateGatherHomes()
+
         rebuildStatusMenu()
     }
 
@@ -469,7 +659,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             desktopStartTime = Date()
             if sessions[desktopId] == nil {
                 let color = PetColor.palette[0]
-                let screen = NSScreen.main!
+                let screen = PetPlacement.screen ?? NSScreen.main!
                 let startX = screen.visibleFrame.midX + 60
                 let petWindow = PetWindow(sessionId: desktopId, color: color, startX: startX)
                 let speechBubble = SpeechBubbleWindow()
@@ -644,74 +834,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem(title: sessionLabel, action: nil, keyEquivalent: ""))
 
         // 전체 작업 시간
-        let totalMins = timeTracker.todayTotalMinutes()
-        menu.addItem(NSMenuItem(title: L10n.menuTodayWork(timeTracker.formatMinutes(totalMins)), action: nil, keyEquivalent: ""))
+        menu.addItem(todayWorkItem())
 
         menu.addItem(NSMenuItem.separator())
 
         // 토큰 사용량
         let sessionUsage = tokenTracker.usageForSession(sessionId)
-        let todayUsage = tokenTracker.todayUsage()
 
         if sessionUsage.totalTokens > 0 {
             let inLabel = L10n.isKorean ? "입력" : "In"
             let outLabel = L10n.isKorean ? "출력" : "Out"
             menu.addItem(NSMenuItem(title: "🪙 \(L10n.isKorean ? "세션" : "Session"): \(TokenUsage.formatTokens(sessionUsage.totalTokens)) (\(inLabel) \(TokenUsage.formatTokens(sessionUsage.inputTokens + sessionUsage.cacheReadTokens)) / \(outLabel) \(TokenUsage.formatTokens(sessionUsage.outputTokens)))", action: nil, keyEquivalent: ""))
         }
-        if todayUsage.totalTokens > 0 {
-            let cacheRate = todayUsage.cacheReadTokens > 0 ? Int(Double(todayUsage.cacheReadTokens) / Double(todayUsage.cacheReadTokens + todayUsage.cacheCreationTokens + todayUsage.inputTokens) * 100) : 0
-            let todayLabel = L10n.isKorean ? "🪙 오늘 총" : "🪙 Today"
-            menu.addItem(NSMenuItem(title: "\(todayLabel): \(TokenUsage.formatTokens(todayUsage.totalTokens)) (cache \(cacheRate)%)", action: nil, keyEquivalent: ""))
-        }
+        if let tokens = todayTokensItem() { menu.addItem(tokens) }
 
         menu.addItem(NSMenuItem.separator())
 
-        // 시간 표시 토글
-        let timerToggle = NSMenuItem(title: L10n.menuWorkTime, action: #selector(toggleTimer), keyEquivalent: "")
-        timerToggle.target = self
-        timerToggle.state = showTimerEnabled ? .on : .off
-        menu.addItem(timerToggle)
-
-        // 스킨 서브메뉴
-        let skinMenu = NSMenu()
-        for skinType in PetSkinType.allCases {
-            let displayName: String
-            switch skinType {
-            case .basic: displayName = L10n.skinBasic
-            case .spring: displayName = L10n.skinSpring
-            case .summer: displayName = L10n.skinSummer
-            case .autumn: displayName = L10n.skinAutumn
-            }
-            let item = NSMenuItem(title: displayName, action: #selector(changeSkin(_:)), keyEquivalent: "")
-            item.target = self
-            item.representedObject = skinType.rawValue
-            if session.petWindow.petView.skin == skinType {
-                item.state = .on
-            }
-            skinMenu.addItem(item)
-        }
-        let skinItem = NSMenuItem(title: L10n.menuSkin, action: nil, keyEquivalent: "")
-        skinItem.submenu = skinMenu
-        menu.addItem(skinItem)
-
-        // 언어 서브메뉴
-        let langMenu = NSMenu()
-        let currentLang = UserDefaults.standard.string(forKey: "claudepet_language") ?? "system"
-        let langOptions: [(value: String, name: String)] = [
-            ("system", L10n.langSystem),
-            ("ko", L10n.langKorean),
-            ("en", L10n.langEnglish),
-        ]
-        for opt in langOptions {
-            let item = NSMenuItem(title: opt.name, action: #selector(changeLanguage(_:)), keyEquivalent: "")
-            item.target = self
-            item.representedObject = opt.value
-            if currentLang == opt.value { item.state = .on }
-            langMenu.addItem(item)
-        }
-        let langItem = NSMenuItem(title: L10n.menuLanguage, action: nil, keyEquivalent: "")
-        langItem.submenu = langMenu
-        menu.addItem(langItem)
+        // 작업시간 표시 · 스킨 · 언어 · 펫 배치 (메뉴바 메뉴와 같은 항목)
+        settingsMenuItems().forEach { menu.addItem($0) }
 
         menu.addItem(NSMenuItem.separator())
 

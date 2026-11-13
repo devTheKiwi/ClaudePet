@@ -92,10 +92,26 @@ class PetWindow: NSWindow {
     let petView: PetView
     let sessionId: String
 
+    /// 모여 있기: 이 펫이 서 있을 자리(x). nil 이면 자유롭게 산책
+    var homeX: CGFloat?
+
+    static let fadedAlpha: CGFloat = 0.2
+    /// 커서가 다가오면 반투명 + 클릭 통과 (AppDelegate.updateHoverFade)
+    var hoverFaded = false {
+        didSet {
+            guard hoverFaded != oldValue else { return }
+            ignoresMouseEvents = hoverFaded
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.15
+                self.animator().alphaValue = hoverFaded ? PetWindow.fadedAlpha : 1.0
+            }
+        }
+    }
+
     init(sessionId: String, color: PetColor, startX: CGFloat? = nil) {
         self.sessionId = sessionId
 
-        let screen = NSScreen.main!
+        let screen = PetPlacement.screen ?? NSScreen.main!
         let visibleFrame = screen.visibleFrame
         let petSize = NSSize(width: 96, height: 64)
 
@@ -125,18 +141,32 @@ class PetWindow: NSWindow {
         petView.onPositionUpdate = { [weak self] dx in
             self?.movePet(dx: dx)
         }
+        petView.homeDistance = { [weak self] in
+            guard let self = self, let home = self.homeX else { return nil }
+            return home - self.frame.origin.x
+        }
 
         petView.startAnimating()
     }
 
+    /// 배치 설정이 바뀌면 다음 걸음을 기다리지 않고 바로 자리 잡기
+    func snapToFloor() {
+        movePet(dx: 0)
+    }
+
     private func movePet(dx: CGFloat) {
-        guard let screen = NSScreen.main else { return }
+        guard let screen = PetPlacement.screen else { return }
         var newFrame = self.frame
         newFrame.origin.x += dx
 
         let visibleFrame = screen.visibleFrame
         let minX = visibleFrame.origin.x
         let maxX = visibleFrame.origin.x + visibleFrame.width - newFrame.width
+
+        // 다른 화면에 있다가 옮겨 온 경우(설정 변경·모니터 연결 변화): 가장자리에 한꺼번에 몰리지 않게 화면 안 아무 데로
+        if newFrame.midX < visibleFrame.minX || newFrame.midX > visibleFrame.maxX {
+            newFrame.origin.x = CGFloat.random(in: minX...maxX)
+        }
 
         if newFrame.origin.x <= minX {
             newFrame.origin.x = minX
@@ -163,6 +193,8 @@ class PetView: NSView {
 
     var claudeStatus: ClaudeStatus = .notRunning
     var onPositionUpdate: ((CGFloat) -> Void)?
+    /// 모여 있기일 때 자기 자리까지 남은 거리(+ 면 오른쪽). nil 이면 자유 산책
+    var homeDistance: (() -> CGFloat?)?
     var onClicked: (() -> Void)?
     var onDoubleClicked: (() -> Void)?
     var onRightClicked: ((NSEvent) -> Void)?
@@ -270,11 +302,22 @@ class PetView: NSView {
     private func tick() {
         animationFrame += 1
 
+        var step = speed
+        // 모여 있기: 자기 자리로 걸어가서(멀면 뛰어서) 멈춘다. 도착한 뒤의 점프·기뻐하기 같은 반응은 그대로 둔다.
+        if let distance = homeDistance?() {
+            if abs(distance) > speed {
+                state = distance > 0 ? .walkingRight : .walkingLeft
+                if abs(distance) > 120 { step = speed * 4 }
+            } else if state == .walkingLeft || state == .walkingRight {
+                state = .idle
+            }
+        }
+
         switch state {
         case .walkingLeft:
-            onPositionUpdate?(-speed)
+            onPositionUpdate?(-step)
         case .walkingRight:
-            onPositionUpdate?(speed)
+            onPositionUpdate?(step)
         default:
             break
         }
