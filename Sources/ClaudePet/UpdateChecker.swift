@@ -63,7 +63,7 @@ class UpdateChecker {
                 DispatchQueue.main.async {
                     self.onResult?(L10n.updateAvailable(latest))
                     if let teaser = teaser {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 4.5) { self.onNews?(teaser) }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 5) { self.onNews?(teaser) }   // 앞 말풍선(4초 + 사라지기 0.5초) 뒤
                     }
                 }
             } else {
@@ -76,7 +76,7 @@ class UpdateChecker {
                     DispatchQueue.main.async {
                         if let news = news {
                             self.onResult?(L10n.whatsNew(self.currentVersion))
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 4.5) { self.onNews?(news) }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 5) { self.onNews?(news) }
                         } else {
                             self.onResult?(L10n.updateLatest(self.currentVersion))
                         }

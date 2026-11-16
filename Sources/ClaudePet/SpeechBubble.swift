@@ -4,6 +4,8 @@ class SpeechBubbleWindow: NSWindow {
     private let label: NSTextField
     private let bubbleView: SpeechBubbleView
     private var dismissTimer: Timer?
+    /// show() 할 때마다 1씩 증가 — 사라지는 애니메이션 도중 새 말이 시작됐는지 판별용
+    private var showCount = 0
 
     /// 커서가 다가오면 펫과 함께 반투명 (AppDelegate.updateHoverFade). 클릭은 원래 통과한다.
     var hoverFaded = false {
@@ -56,6 +58,7 @@ class SpeechBubbleWindow: NSWindow {
 
     func show(text: String, at point: NSPoint, persistent: Bool = false, duration: TimeInterval = 4.0) {
         dismissTimer?.invalidate()
+        showCount += 1
 
         // 현재 스킨 적용
         if let saved = UserDefaults.standard.string(forKey: "claudepet_skin"),
@@ -129,11 +132,14 @@ class SpeechBubbleWindow: NSWindow {
     }
 
     private func dismiss() {
+        let shownAt = showCount
         NSAnimationContext.runAnimationGroup({ context in
             context.duration = 0.5
             self.animator().alphaValue = 0
         }, completionHandler: { [weak self] in
-            self?.orderOut(nil)
+            // 사라지는 동안 새 말풍선이 떴으면 그건 숨기지 않는다 (예전엔 방금 띄운 말까지 같이 사라졌음)
+            guard let self = self, self.showCount == shownAt else { return }
+            self.orderOut(nil)
         })
     }
 }
