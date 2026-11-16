@@ -284,7 +284,8 @@ class PetView: NSView {
     }
 
     private func pickRandomBehavior() {
-        let roll = Int.random(in: 0...10)
+        // 대기 40% · 오른쪽 30% · 왼쪽 30% (예전엔 0...10 이라 왼쪽이 4/11 로 더 자주 나와 펫이 왼쪽에 몰렸다)
+        let roll = Int.random(in: 0..<10)
         if roll < 4 {
             state = .idle
         } else if roll < 7 {
@@ -302,7 +303,9 @@ class PetView: NSView {
     private func tick() {
         animationFrame += 1
 
-        var step = speed
+        // 1·2pt 번갈아 걷기 (평균 1.5 = speed). macOS 가 창 위치를 정수로 내림해서 1.5씩 움직이면
+        // 오른쪽은 1pt, 왼쪽은 2pt 씩 가 펫이 왼쪽으로 쏠렸다 — 정수로만 움직이면 내림 영향이 없다.
+        var step: CGFloat = animationFrame % 2 == 0 ? 1 : 2
         // 모여 있기: 자기 자리로 걸어가서(멀면 뛰어서) 멈춘다. 도착한 뒤의 점프·기뻐하기 같은 반응은 그대로 둔다.
         if let distance = homeDistance?() {
             if abs(distance) > speed {

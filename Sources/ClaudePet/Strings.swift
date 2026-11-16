@@ -228,6 +228,9 @@ struct L10n {
     static let updateLatest: (String) -> String = { ver in
         isKorean ? "최신 버전이에요! (v\(ver))" : "You're up to date! (v\(ver))"
     }
+    static let whatsNew: (String) -> String = { ver in
+        isKorean ? "v\(ver) 새 소식! 🎉" : "What's new in v\(ver)! 🎉"
+    }
     static var updateStarted: String { isKorean ? "업데이트 시작! 터미널을 확인해줘!" : "Updating! Check terminal!" }
     static var updateChecking: String { isKorean ? "업데이트 확인 중..." : "Checking updates..." }
 }

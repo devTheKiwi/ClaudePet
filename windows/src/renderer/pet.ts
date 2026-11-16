@@ -88,7 +88,6 @@ const MAX_LEAVES = 8;
 // 행동 타이머
 let behaviorTimeoutId: number | null = null;
 let stateTimeoutId: number | null = null;
-const SPEED = 1.5;
 
 // ===== IPC bridge (preload 에서 노출) =====
 
@@ -226,7 +225,8 @@ function scheduleBehavior(): void {
 }
 
 function pickRandomBehavior(): void {
-  const roll = Math.floor(Math.random() * 11);
+  // 대기 40% · 오른쪽 30% · 왼쪽 30% (예전엔 *11 이라 왼쪽이 4/11 로 더 자주 나왔다)
+  const roll = Math.floor(Math.random() * 10);
   if (roll < 4) {
     state = 'idle';
   } else if (roll < 7) {
@@ -248,10 +248,12 @@ scheduleBehavior();
 function tick(): void {
   animationFrame++;
 
+  // 1·2px 번갈아 걷기 (평균 1.5). 1.5 를 보내면 메인의 Math.round 가 오른쪽 2·왼쪽 1 로 바꿔 한쪽으로 쏠렸다.
+  const step = animationFrame % 2 === 0 ? 1 : 2;
   if (state === 'walkingLeft') {
-    window.petBridge?.moveBy(-SPEED);
+    window.petBridge?.moveBy(-step);
   } else if (state === 'walkingRight') {
-    window.petBridge?.moveBy(SPEED);
+    window.petBridge?.moveBy(step);
   }
 
   draw();

@@ -54,7 +54,7 @@ class SpeechBubbleWindow: NSWindow {
         ])
     }
 
-    func show(text: String, at point: NSPoint, persistent: Bool = false) {
+    func show(text: String, at point: NSPoint, persistent: Bool = false, duration: TimeInterval = 4.0) {
         dismissTimer?.invalidate()
 
         // 현재 스킨 적용
@@ -107,7 +107,7 @@ class SpeechBubbleWindow: NSWindow {
 
         // persistent가 아닌 경우만 자동 사라짐
         if !persistent {
-            dismissTimer = Timer.scheduledTimer(withTimeInterval: 4.0, repeats: false) { [weak self] _ in
+            dismissTimer = Timer.scheduledTimer(withTimeInterval: duration, repeats: false) { [weak self] _ in
                 self?.dismiss()
             }
         }

@@ -108,6 +108,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.showSpeech(msg, for: session)
             }
         }
+        // 릴리스 노트의 펫 멘트(업데이트 소식)는 놓치지 않게 10초
+        updateChecker.onNews = { [weak self] msg in
+            if let session = self?.sessions.values.first {
+                self?.showSpeech(msg, for: session, duration: 10)
+            }
+        }
         updateChecker.checkOnLaunch()
         // 6시간마다 재확인 — 앱을 계속 켜둬도 새 버전을 알 수 있게 (최신이면 조용히)
         Timer.scheduledTimer(withTimeInterval: 6 * 60 * 60, repeats: true) { [weak self] _ in
@@ -872,11 +878,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Speech
 
-    private func showSpeech(_ text: String, for session: PetSession, persistent: Bool = false) {
+    private func showSpeech(_ text: String, for session: PetSession, persistent: Bool = false, duration: TimeInterval = 4.0) {
         let petFrame = session.petWindow.frame
         let bubbleX = petFrame.midX
         let bubbleY = petFrame.maxY + 4
-        session.speechBubble.show(text: text, at: NSPoint(x: bubbleX, y: bubbleY), persistent: persistent)
+        session.speechBubble.show(text: text, at: NSPoint(x: bubbleX, y: bubbleY), persistent: persistent, duration: duration)
     }
 
     // MARK: - Random Speech

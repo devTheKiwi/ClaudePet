@@ -9,6 +9,8 @@ class UpdateChecker {
     var latestVersion: String?
     var updateAvailable: Bool = false
     var onResult: ((String) -> Void)?
+    /// 릴리스 노트에 숨겨 둔 펫 멘트(업데이트 소식) — 놓치지 않게 길게 보여준다
+    var onNews: ((String) -> Void)?
 
     func checkOnLaunch() {
         DispatchQueue.global().asyncAfter(deadline: .now() + 5) { [weak self] in
@@ -50,22 +52,51 @@ class UpdateChecker {
 
             let latest = latestTag.replacingOccurrences(of: "v", with: "")
             self.latestVersion = latest
+            let comment = (json["body"] as? String).flatMap(UpdateChecker.petComment(in:))
+            let defaults = UserDefaults.standard
 
             if self.isNewer(latest: latest, current: self.currentVersion) {
                 self.updateAvailable = true
+                // 새 버전 예고 멘트는 버전마다 한 번만 (6시간마다 다시 확인해도 반복하지 않게)
+                let teaser = defaults.string(forKey: "claudepet_teased_version") == latest ? nil : comment
+                if teaser != nil { defaults.set(latest, forKey: "claudepet_teased_version") }
                 DispatchQueue.main.async {
                     self.onResult?(L10n.updateAvailable(latest))
+                    if let teaser = teaser {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 4.5) { self.onNews?(teaser) }
+                    }
                 }
             } else {
                 self.updateAvailable = false
                 if announceWhenCurrent {
+                    // 이 버전을 처음 켰으면 그 버전 소식(릴리스 노트 멘트), 아니면 평소처럼 '최신 버전'
+                    let firstLaunch = defaults.string(forKey: "claudepet_last_launched_version") != self.currentVersion
+                    let news = firstLaunch && latest == self.currentVersion ? comment : nil
+                    defaults.set(self.currentVersion, forKey: "claudepet_last_launched_version")
                     DispatchQueue.main.async {
-                        self.onResult?(L10n.updateLatest(self.currentVersion))
+                        if let news = news {
+                            self.onResult?(L10n.whatsNew(self.currentVersion))
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 4.5) { self.onNews?(news) }
+                        } else {
+                            self.onResult?(L10n.updateLatest(self.currentVersion))
+                        }
                     }
                 }
             }
         }
         task.resume()
+    }
+
+    /// 릴리스 노트에 숨겨 둔 펫 멘트. GitHub 페이지엔 안 보이는 HTML 주석으로 쓴다:
+    ///   <!-- pet-ko: 한국어 멘트 -->  <!-- pet-en: English line -->  (언어별 줄이 없으면 <!-- pet: … -->)
+    static func petComment(in body: String) -> String? {
+        func find(_ key: String) -> String? {
+            guard let regex = try? NSRegularExpression(pattern: "<!--\\s*\(key)\\s*:\\s*(.+?)\\s*-->", options: [.dotMatchesLineSeparators]),
+                  let match = regex.firstMatch(in: body, range: NSRange(body.startIndex..., in: body)),
+                  let range = Range(match.range(at: 1), in: body) else { return nil }
+            return String(body[range].prefix(80))   // 말풍선은 2줄까지라 너무 길면 자른다
+        }
+        return find(L10n.isKorean ? "pet-ko" : "pet-en") ?? find("pet")
     }
 
     private func isNewer(latest: String, current: String) -> Bool {
