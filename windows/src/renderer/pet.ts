@@ -359,14 +359,14 @@ function draw(): void {
   fillEllipse(leftEyeX + 2 + pupilDx, eyeY + 2.5, 3.5, 3.5);
   fillEllipse(rightEyeX + 2 + pupilDx, eyeY + 2.5, 3.5, 3.5);
 
+  // === Desktop 모드: 동그란 뿔테 ===
+  if (petMode === 'desktop') {
+    drawGlasses(centerX, leftEyeX, rightEyeX, eyeY);
+  }
+
   // === 작업 중 이펙트 ===
   if (claudeStatus === 'working') {
     drawWorkingEffect(centerX, bodyY + bodyHeight + headHeight - 10);
-  }
-
-  // === Desktop 모드: 커피잔 ===
-  if (petMode === 'desktop') {
-    drawCoffee(centerX, bodyY, bounceY);
   }
 
   // === 봄 스킨 악세서리 ===
@@ -383,6 +383,11 @@ function draw(): void {
   if (skin === 'autumn') {
     drawAutumnAccessory(centerX, bodyY, headY + headHeight);
     updateAndDrawLeaves();
+  }
+
+  // === Desktop 모드: 커피잔 (맨 앞 — 스킨 장식 다음에 그려야 목도리·튜브에 안 가려진다) ===
+  if (petMode === 'desktop') {
+    drawCoffee(centerX, bodyY, bounceY);
   }
 
   ctx.restore();
@@ -456,6 +461,62 @@ function drawWorkingEffect(centerX: number, topY: number): void {
     const y = topY + 8 + Math.sin(angle) * radius - 1.5;
     fillEllipse(x, y, 3, 3);
   }
+}
+
+// ===== Glasses (Desktop 모드, PetWindow.swift drawGlasses 1:1) =====
+
+const GLASSES_FRAME = 'rgb(42, 36, 32)';
+
+/** 동그란 검정 뿔테 — 렌즈가 눈 흰자(7×8)를 1.9 여유로 감싼다 (지름 약 11.8, 가운데서 두 테가 살짝 맞닿음) */
+function drawGlasses(centerX: number, leftEyeX: number, rightEyeX: number, eyeY: number): void {
+  const pad = 1.9;
+  const lensW = 7 + pad * 2;
+  const lensH = 8 + pad * 2;
+  const lensY = eyeY - pad;
+  const lensXs = [leftEyeX - pad, rightEyeX - pad];
+  const lensPath = (x: number): void => {
+    ctx.beginPath();
+    ctx.ellipse(x + lensW / 2, lensY + lensH / 2, lensW / 2 + 0.4, lensH / 2, 0, 0, Math.PI * 2);
+  };
+
+  ctx.save();
+  ctx.lineCap = 'round';
+
+  // 렌즈: 아주 옅은 유리색
+  ctx.fillStyle = 'rgba(205, 230, 255, 0.25)';
+  lensXs.forEach((x) => { lensPath(x); ctx.fill(); });
+
+  ctx.strokeStyle = GLASSES_FRAME;
+
+  // 다리: 머리 양옆까지
+  ctx.lineWidth = 1.3;
+  ctx.beginPath();
+  ctx.moveTo(lensXs[0] - 0.4, eyeY + 6.2);
+  ctx.lineTo(centerX - 15.5, eyeY + 7);
+  ctx.moveTo(lensXs[1] + lensW + 0.4, eyeY + 6.2);
+  ctx.lineTo(centerX + 15.5, eyeY + 7);
+  ctx.stroke();
+
+  // 브릿지 (위로 살짝 휜 곡선)
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(lensXs[0] + lensW, eyeY + 5.6);
+  ctx.quadraticCurveTo(centerX + 0.5, eyeY + 7, lensXs[1], eyeY + 5.6);
+  ctx.stroke();
+
+  // 테: 뿔테라 두껍게
+  ctx.lineWidth = 1.9;
+  lensXs.forEach((x) => { lensPath(x); ctx.stroke(); });
+
+  // 반짝임
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+  lensXs.forEach((x) => {
+    ctx.beginPath();
+    ctx.ellipse(x + lensW - 2.6, lensY + lensH - 2.8, 0.8, 1.2, -0.5, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  ctx.restore();
 }
 
 // ===== Coffee (Desktop 모드) =====

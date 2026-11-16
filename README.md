@@ -79,7 +79,7 @@ rmdir /s "%USERPROFILE%\.claudepet-windows"
 ## ✨ Features
 
 - **Claude Code 실시간 연동** — Hook 기반 작업 시작/완료/권한 요청 감지
-- **Claude Desktop 지원** — Desktop 켜면 커피잔 든 펫 등장 ☕
+- **Claude Desktop 지원** — Desktop 켜면 동그란 안경 쓰고 커피잔 든 펫 등장 ☕
 - **토큰 사용량 추적** — 세션/일일 토큰, 캐시 절약률, 마일스톤 알림
 - **도구별 상세 알림** — "명령어 실행 중...", "코드 수정 중..." 등
 - **작업시간 트래커** — 초 단위 실시간 뱃지

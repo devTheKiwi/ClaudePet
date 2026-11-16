@@ -417,6 +417,11 @@ class PetView: NSView {
         NSBezierPath(ovalIn: NSRect(x: leftEyeX + 2 + pupilDx, y: eyeY + 2.5, width: 3.5, height: 3.5)).fill()
         NSBezierPath(ovalIn: NSRect(x: rightEyeX + 2 + pupilDx, y: eyeY + 2.5, width: 3.5, height: 3.5)).fill()
 
+        // === Desktop 모드: 동그란 뿔테 ===
+        if petMode == .desktop {
+            drawGlasses(centerX: centerX, leftEyeX: leftEyeX, rightEyeX: rightEyeX, eyeY: eyeY)
+        }
+
         // === 작업 중 이펙트 ===
         if claudeStatus == .working {
             drawWorkingEffect(centerX: centerX, topY: bodyY + bodyHeight + headHeight - 10)
@@ -425,11 +430,6 @@ class PetView: NSView {
         // === 시간 뱃지 (왼쪽 대각선) ===
         if showTimer && workingSeconds > 0 {
             drawTimeBadge(bodyX: bodyX, headTopY: headY + headHeight, bounceY: bounceY)
-        }
-
-        // === Desktop 모드: 커피잔 ===
-        if petMode == .desktop {
-            drawCoffee(centerX: centerX, bodyY: bodyY, bounceY: bounceY)
         }
 
         // === 스킨 악세서리 ===
@@ -444,6 +444,11 @@ class PetView: NSView {
         if skin == .autumn {
             drawAutumnAccessory(centerX: centerX, bodyY: bodyY, headTopY: headY + headHeight)
             updateAndDrawLeaves()
+        }
+
+        // === Desktop 모드: 커피잔 (맨 앞 — 스킨 장식 다음에 그려야 목도리·튜브에 안 가려진다) ===
+        if petMode == .desktop {
+            drawCoffee(centerX: centerX, bodyY: bodyY, bounceY: bounceY)
         }
     }
 
@@ -674,6 +679,66 @@ class PetView: NSView {
         // 텍스트
         (timeText as NSString).draw(at: NSPoint(x: badgeX + 4, y: badgeY + 2), withAttributes: attrs)
     }
+
+    // MARK: - Glasses (Desktop Mode)
+
+    /// 동그란 검정 뿔테 — 렌즈가 눈 흰자(7×8)를 1.9pt 여유로 감싼다 (지름 약 11.8pt, 가운데서 두 테가 살짝 맞닿음)
+    private func drawGlasses(centerX: CGFloat, leftEyeX: CGFloat, rightEyeX: CGFloat, eyeY: CGFloat) {
+        let pad: CGFloat = 1.9
+        let lensW = 7 + pad * 2
+        let lensH = 8 + pad * 2
+        let lensY = eyeY - pad
+        let lensXs = [leftEyeX - pad, rightEyeX - pad]
+        func lensRect(_ x: CGFloat) -> NSRect { NSRect(x: x - 0.4, y: lensY, width: lensW + 0.8, height: lensH) }
+
+        // 렌즈: 아주 옅은 유리색
+        NSColor(red: 0.80, green: 0.90, blue: 1.0, alpha: 0.25).setFill()
+        for x in lensXs { NSBezierPath(ovalIn: lensRect(x)).fill() }
+
+        glassesFrameColor.setStroke()
+
+        // 다리: 머리 양옆까지
+        let temples = NSBezierPath()
+        temples.lineWidth = 1.3
+        temples.lineCapStyle = .round
+        temples.move(to: NSPoint(x: lensXs[0] - 0.4, y: eyeY + 6.2))
+        temples.line(to: NSPoint(x: centerX - 15.5, y: eyeY + 7))
+        temples.move(to: NSPoint(x: lensXs[1] + lensW + 0.4, y: eyeY + 6.2))
+        temples.line(to: NSPoint(x: centerX + 15.5, y: eyeY + 7))
+        temples.stroke()
+
+        // 브릿지 (위로 살짝 휜 곡선)
+        let start = NSPoint(x: lensXs[0] + lensW, y: eyeY + 5.6)
+        let end = NSPoint(x: lensXs[1], y: eyeY + 5.6)
+        let peak = NSPoint(x: centerX + 0.5, y: eyeY + 7)
+        let bridge = NSBezierPath()
+        bridge.lineWidth = 1.5
+        bridge.lineCapStyle = .round
+        bridge.move(to: start)
+        bridge.curve(to: end,
+                     controlPoint1: NSPoint(x: start.x + (peak.x - start.x) * 2 / 3, y: start.y + (peak.y - start.y) * 2 / 3),
+                     controlPoint2: NSPoint(x: end.x + (peak.x - end.x) * 2 / 3, y: end.y + (peak.y - end.y) * 2 / 3))
+        bridge.stroke()
+
+        // 테: 뿔테라 두껍게
+        for x in lensXs {
+            let rim = NSBezierPath(ovalIn: lensRect(x))
+            rim.lineWidth = 1.9
+            rim.stroke()
+        }
+
+        // 반짝임
+        NSColor(white: 1, alpha: 0.85).setFill()
+        for x in lensXs {
+            let glint = NSBezierPath(ovalIn: NSRect(x: -0.8, y: -1.2, width: 1.6, height: 2.4))
+            var transform = AffineTransform(translationByX: x + lensW - 2.6, byY: lensY + lensH - 2.8)
+            transform.rotate(byRadians: -0.5)
+            glint.transform(using: transform)
+            glint.fill()
+        }
+    }
+
+    private let glassesFrameColor = NSColor(red: 0.165, green: 0.141, blue: 0.125, alpha: 1)   // #2a2420
 
     // MARK: - Coffee (Desktop Mode)
 
