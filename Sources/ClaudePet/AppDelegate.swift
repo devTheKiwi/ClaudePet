@@ -12,6 +12,7 @@ struct PetSession {
     var workingSeconds: Int = 0
     var creditedMinutes: Int = 0   // 일별 작업시간에 이미 적립한 분 (세션별 독립 카운트)
     var lastTool: String = ""
+    var info: SessionInfo? = nil   // 훅이 남긴 최신 값 (더블클릭으로 세션 창 찾기)
 }
 
 // MARK: - Time Tracker
@@ -584,6 +585,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 sessions[info.sessionId]?.lastStatus = info.status
                 sessions[info.sessionId]?.cwd = info.cwd
+                sessions[info.sessionId]?.info = info
                 existing.petWindow.petView.claudeStatus = info.status
 
                 // 작업 중일 때 도구가 바뀌면 말풍선 업데이트
@@ -607,6 +609,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
                     sessions[info.sessionId]?.lastStatus = info.status
                     sessions[info.sessionId]?.cwd = info.cwd
+                    sessions[info.sessionId]?.info = info
                     defaultSession.petWindow.petView.claudeStatus = info.status
 
                     let dir = (info.cwd as NSString).lastPathComponent
@@ -726,8 +729,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self?.handlePetClicked(session: session)
         }
         petWindow.petView.onDoubleClicked = { [weak self] in
-            guard let session = self?.sessions[sessionId] else { return }
-            self?.handlePetDoubleClicked(session: session)
+            self?.jumpToSession(sessionId)
         }
         petWindow.petView.onRightClicked = { [weak self] event in
             guard let session = self?.sessions[sessionId] else { return }
@@ -756,7 +758,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             speechBubble: speechBubble,
             colorIndex: colorIndex,
             lastStatus: info.status,
-            cwd: info.cwd
+            cwd: info.cwd,
+            info: info
         )
         sessions[info.sessionId] = session
 
@@ -818,6 +821,40 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         session.petWindow.petView.setState(.jumping)
     }
 
+    // MARK: - 세션 창으로 가기 (더블클릭 · 우클릭 메뉴)
+
+    private var isJumping = false   // 이동 중엔 다시 누르지 않게 (터미널 제어 허용 창이 떠 있는 동안 등)
+
+    private func jumpToSession(_ sessionId: String) {
+        guard !isJumping, let session = sessions[sessionId] else { return }
+        // 세션 없는 기본 펫은 갈 곳이 없으니 예전 더블클릭 반응("신난다~")
+        guard sessionId != "default" else {
+            handlePetDoubleClicked(session: session)
+            return
+        }
+        isJumping = true
+        session.petWindow.petView.setState(.jumping)
+
+        SessionJump.go(sessionId: sessionId, info: session.info) { [weak self] outcome in
+            guard let self = self else { return }
+            self.isJumping = false
+            guard let session = self.sessions[sessionId] else { return }
+            switch outcome {
+            case .jumped: break
+            case .appOnly: self.showSpeech(L10n.jumpAppOnly, for: session)
+            case .needsPermission: self.showSpeech(L10n.jumpNeedsPermission, for: session, duration: 8)
+            case .closed: self.showSpeech(L10n.jumpClosed, for: session)
+            case .oldHook: self.showSpeech(L10n.jumpOldHook, for: session, duration: 6)
+            case .notFound: self.showSpeech(L10n.jumpNotFound, for: session)
+            }
+        }
+    }
+
+    @objc private func jumpMenuClicked(_ sender: NSMenuItem) {
+        guard let sessionId = sender.representedObject as? String else { return }
+        jumpToSession(sessionId)
+    }
+
     private func handlePetRightClicked(_ event: NSEvent, sessionId: String = "", session: PetSession) {
         let menu = NSMenu()
         let dir = (session.cwd as NSString).lastPathComponent
@@ -830,6 +867,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         case .notRunning: statusText = L10n.menuOff
         }
         menu.addItem(NSMenuItem(title: "\(dir.isEmpty ? "Claude" : dir) - \(statusText)", action: nil, keyEquivalent: ""))
+
+        // 세션 창으로 가기 (세션 없는 기본 펫은 갈 곳이 없어 뺀다)
+        if sessionId != "default" {
+            let jumpItem = NSMenuItem(
+                title: sessionId == "desktop" ? L10n.menuOpenDesktop : L10n.menuJump,
+                action: #selector(jumpMenuClicked(_:)),
+                keyEquivalent: ""
+            )
+            jumpItem.target = self
+            jumpItem.representedObject = sessionId
+            menu.addItem(jumpItem)
+        }
 
         // 세션 시간
         let sessionSecs = Int(Date().timeIntervalSince(session.sessionStart))

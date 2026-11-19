@@ -109,6 +109,8 @@ cat > "$APP_BUNDLE/Contents/Info.plist" << PLIST
     <true/>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>펫을 더블클릭하면 그 세션이 열린 터미널 탭으로 이동해요. (Double-click a pet to jump to its session's terminal tab.)</string>
 </dict>
 </plist>
 PLIST
@@ -123,6 +125,7 @@ mkdir -p "$HOOK_DIR"
 # Hook 스크립트 설치
 cat > "$HOOK_DIR/claudepet-hook.sh" << 'HOOKSCRIPT'
 #!/bin/bash
+# claudepet-hook v2
 EVENT="$1"
 cat | python3 -c "
 import json, time, os, sys
@@ -147,12 +150,17 @@ if event == 'SessionEnd':
     except:
         pass
 else:
+    env = os.environ
     status = {
         'status': event,
         'tool': tool,
         'cwd': cwd,
         'session_id': session_id,
-        'ts': ts
+        'ts': ts,
+        'pid': int('$PPID' or 0),
+        'app': env.get('__CFBundleIdentifier', ''),
+        'term': env.get('TERM_PROGRAM', ''),
+        'orca_terminal': env.get('ORCA_TERMINAL_HANDLE', '')
     }
     with open(status_file, 'w') as f:
         json.dump(status, f)

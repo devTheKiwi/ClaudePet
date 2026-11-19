@@ -20,6 +20,9 @@ class HookSetup {
             return
         }
 
+        // 옛 버전 훅이면 새로 쓴다. 돌고 있는 세션도 다음 이벤트부터 새 훅을 쓴다.
+        upgradeHookIfNeeded()
+
         // Hook 파일은 있지만 settings.json에 등록 안 됐으면 → 자동 복구
         if !isHookRegistered() {
             let success = updateSettings()
@@ -98,54 +101,82 @@ class HookSetup {
         }
 
         // 2. Hook 스크립트 작성
-        let hookScript = """
-        #!/bin/bash
-        EVENT="$1"
-        cat | python3 -c "
-        import json, time, os, sys
-
-        event = '$EVENT'
-        ts = int(time.time())
-
-        try:
-            data = json.load(sys.stdin)
-        except:
-            data = {}
-
-        session_id = data.get('session_id', 'unknown')
-        cwd = data.get('cwd', '')
-        tool = data.get('tool_name', 'none')
-
-        status_file = f'/tmp/claudepet-{session_id}.json'
-
-        if event == 'SessionEnd':
-            try:
-                os.remove(status_file)
-            except:
-                pass
-        else:
-            status = {
-                'status': event,
-                'tool': tool,
-                'cwd': cwd,
-                'session_id': session_id,
-                'ts': ts
-            }
-            with open(status_file, 'w') as f:
-                json.dump(status, f)
-        " 2>/dev/null
-        """
-
-        do {
-            try hookScript.write(toFile: hookPath, atomically: true, encoding: .utf8)
-            // 실행 권한 부여
-            try fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: hookPath)
-        } catch {
-            return false
-        }
+        guard writeHookScript() else { return false }
 
         // 3. settings.json 업데이트
         return updateSettings()
+    }
+
+    /// 훅 스크립트 버전. 내용을 바꾸면 숫자를 올린다 → 앱이 켜질 때 옛 훅을 새로 쓴다. (install.sh의 훅도 같이 고친다)
+    private static let hookVersionMarker = "# claudepet-hook v2"
+
+    /// 세션 상태를 /tmp/claudepet-<세션>.json 에 남긴다.
+    /// pid·app·term·orca_terminal은 펫 더블클릭으로 세션 창을 찾는 데 쓴다 (SessionJump). 훅의 부모 프로세스가 claude다.
+    private static let hookScript = """
+    #!/bin/bash
+    \(hookVersionMarker)
+    EVENT="$1"
+    cat | python3 -c "
+    import json, time, os, sys
+
+    event = '$EVENT'
+    ts = int(time.time())
+
+    try:
+        data = json.load(sys.stdin)
+    except:
+        data = {}
+
+    session_id = data.get('session_id', 'unknown')
+    cwd = data.get('cwd', '')
+    tool = data.get('tool_name', 'none')
+
+    status_file = f'/tmp/claudepet-{session_id}.json'
+
+    if event == 'SessionEnd':
+        try:
+            os.remove(status_file)
+        except:
+            pass
+    else:
+        env = os.environ
+        status = {
+            'status': event,
+            'tool': tool,
+            'cwd': cwd,
+            'session_id': session_id,
+            'ts': ts,
+            'pid': int('$PPID' or 0),
+            'app': env.get('__CFBundleIdentifier', ''),
+            'term': env.get('TERM_PROGRAM', ''),
+            'orca_terminal': env.get('ORCA_TERMINAL_HANDLE', '')
+        }
+        with open(status_file, 'w') as f:
+            json.dump(status, f)
+    " 2>/dev/null
+    """
+
+    private static func upgradeHookIfNeeded() {
+        guard let current = try? String(contentsOfFile: hookPath, encoding: .utf8),
+              !current.contains(hookVersionMarker) else { return }
+        _ = writeHookScript()
+    }
+
+    /// 실행 권한까지 준 임시 파일을 rename으로 바꿔 끼운다 → 도는 세션이 반쯤 쓴 훅이나 실행 권한 없는 훅을 만나지 않는다
+    private static func writeHookScript() -> Bool {
+        let tmpPath = hookPath + ".tmp"
+        do {
+            try hookScript.write(toFile: tmpPath, atomically: false, encoding: .utf8)
+            try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: tmpPath)
+        } catch {
+            try? FileManager.default.removeItem(atPath: tmpPath)
+            return false
+        }
+        guard rename(tmpPath, hookPath) == 0 else {
+            try? FileManager.default.removeItem(atPath: tmpPath)
+            return false
+        }
+        return true
     }
 
     private static func updateSettings() -> Bool {

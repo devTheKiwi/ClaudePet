@@ -196,7 +196,7 @@ class PetView: NSView {
     /// 모여 있기일 때 자기 자리까지 남은 거리(+ 면 오른쪽). nil 이면 자유 산책
     var homeDistance: (() -> CGFloat?)?
     var onClicked: (() -> Void)?
-    var onDoubleClicked: (() -> Void)?
+    var onDoubleClicked: (() -> Void)?   // 세션 펫: 이 세션이 열린 창으로 가기
     var onRightClicked: ((NSEvent) -> Void)?
     var petMode: PetMode = .code
     var skin: PetSkinType = .basic {

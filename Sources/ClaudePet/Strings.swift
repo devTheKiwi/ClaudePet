@@ -220,6 +220,20 @@ struct L10n {
     static var menuHoverFade: String { isKorean ? "가까이 가면 투명해지기 (⌥ 누르고 클릭)" : "Fade when the cursor is near (⌥-click)" }
     static var menuGather: String { isKorean ? "세션 많으면 구석에 모여 있기 (3마리 이상)" : "Gather in a corner (3+ pets)" }
 
+    // MARK: - 세션 창으로 가기 (더블클릭)
+
+    static var menuJump: String { isKorean ? "이 세션 창으로 가기 (더블클릭)" : "Go to this session (double-click)" }
+    static var menuOpenDesktop: String { isKorean ? "Claude Desktop 열기 (더블클릭)" : "Open Claude Desktop (double-click)" }
+    static var jumpAppOnly: String { isKorean ? "앱은 열었는데 탭까지는 못 찾았어!" : "Opened the app, but couldn't find the tab!" }
+    static var jumpNeedsPermission: String {
+        isKorean ? "터미널 제어를 허용해줘!\n설정 → 개인정보 보호 및 보안 → 자동화" : "Allow terminal control!\nSettings → Privacy & Security → Automation"
+    }
+    static var jumpClosed: String { isKorean ? "이 세션 창은 닫혔나 봐!" : "This session's window seems closed!" }
+    static var jumpOldHook: String {
+        isKorean ? "업데이트 전에 켠 세션이라 아직 몰라!\n한 번 말 걸어주면 기억할게 🥰" : "This session started before the update.\nTalk to it once and I'll remember! 🥰"
+    }
+    static var jumpNotFound: String { isKorean ? "어디서 켠 세션인지 모르겠어 🥲" : "Not sure where this session runs 🥲" }
+
     // MARK: - 업데이트
 
     static let updateAvailable: (String) -> String = { ver in

@@ -130,6 +130,8 @@ cat > "$APP_BUNDLE/Contents/Info.plist" << PLIST
     <true/>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>펫을 더블클릭하면 그 세션이 열린 터미널 탭으로 이동해요. (Double-click a pet to jump to its session's terminal tab.)</string>
 </dict>
 </plist>
 PLIST

@@ -14,6 +14,11 @@ struct SessionInfo: Equatable {
     let cwd: String
     let tool: String
     let timestamp: Int
+    // 세션이 열린 창 찾기용 (훅 v2부터, SessionJump)
+    var pid: Int32 = 0           // claude 프로세스
+    var app: String = ""         // 세션을 띄운 앱 (__CFBundleIdentifier)
+    var term: String = ""        // TERM_PROGRAM
+    var orcaTerminal: String = "" // ORCA_TERMINAL_HANDLE
 
     static func == (lhs: SessionInfo, rhs: SessionInfo) -> Bool {
         return lhs.sessionId == rhs.sessionId && lhs.status == rhs.status
@@ -81,7 +86,11 @@ class ClaudeMonitor {
                 status: status,
                 cwd: cwd,
                 tool: tool,
-                timestamp: ts
+                timestamp: ts,
+                pid: Int32(truncatingIfNeeded: json["pid"] as? Int ?? 0),
+                app: json["app"] as? String ?? "",
+                term: json["term"] as? String ?? "",
+                orcaTerminal: json["orca_terminal"] as? String ?? ""
             ))
         }
 
