@@ -565,9 +565,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 let petWin = session.petWindow
                 let bubbleWin = session.speechBubble
                 sessions.removeValue(forKey: id)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                    petWin.orderOut(nil)
+                // 인사 말풍선을 잠깐 보인 뒤 땅속으로 들어가고, 다 들어가면 창을 닫는다.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
                     bubbleWin.orderOut(nil)
+                    petWin.petView.playExit { petWin.orderOut(nil) }
                 }
             }
         }
@@ -746,10 +747,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let colorIndex = available.randomElement() ?? Int.random(in: 1..<PetColor.palette.count)
 
         let color = PetColor.palette[colorIndex]
-        let petWindow = PetWindow(sessionId: info.sessionId, color: color)
+        // 새 감자는 메인 감자(데스크톱 펫, 없으면 기본 펫) 바로 옆 땅에서 태어난다. 메인이 기뻐 뛰고,
+        // 새 감자는 거기서 싹을 틔운 뒤 자기 자리로 걸어간다(모여 있기 모드면 자리로, 아니면 자유롭게).
+        let mother = sessions["desktop"] ?? sessions["default"]
+        var birthX: CGFloat?
+        if let m = mother?.petWindow, m.isVisible {
+            let vf = (PetPlacement.screen ?? NSScreen.main!).visibleFrame
+            let side: CGFloat = m.frame.midX > vf.midX ? -1 : 1  // 화면 가운데 쪽으로
+            birthX = min(max(m.frame.minX + side * 56, vf.minX), vf.maxX - m.frame.width)
+            mother?.petWindow.petView.setState(.happy)
+        }
+        let petWindow = PetWindow(sessionId: info.sessionId, color: color, startX: birthX)
         let speechBubble = SpeechBubbleWindow()
 
         petWindow.orderFront(nil)
+        petWindow.petView.playEnter()  // 싹이 돋고 감자가 솟아오르기
         setupClickHandlers(for: info.sessionId, petWindow: petWindow)
         petWindow.petView.claudeStatus = info.status
 

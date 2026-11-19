@@ -186,6 +186,114 @@ class PetWindow: NSWindow {
 class PetView: NSView {
     private var state: PetState = .idle
     private var animationFrame: Int = 0
+
+    // MARK: 등장·퇴장 장면
+    // 감자라 땅에서 나고 땅으로 돌아간다.
+    // 등장: 땅에서 싹이 돋아 자라고 → 감자가 쏙 솟아올라 살짝 튕긴다(싹은 감자에 묻혀 사라짐).
+    // 퇴장: 살짝 뛰었다가 땅속으로 들어가고 → 그 자리에 싹이 잠깐 돋았다가 시들어 사라진다.
+    // 뷰 아래쪽 바깥으로 내려간 부분은 잘려 보여 땅속으로 들어가는 것처럼 보인다.
+    private var stageOffset: CGFloat = 0   // 위로 +, 아래(땅속)로 -
+    private var stageAlpha: CGFloat = 1
+    private var sproutScale: CGFloat = 0   // 0 = 싹 없음, 1 = 다 자람
+    private var stageTimer: Timer?
+    // 장면 동안(과 등장 뒤 잠깐)은 제자리에 있는다. 없으면 싹이 돋자마자 자리로 뛰어가 싹째 끌려갔다(2026-11-19 사용자 확인).
+    private var holdPositionUntil = Date.distantPast
+
+    func playEnter() {
+        holdPositionUntil = Date().addingTimeInterval(1.4 + 0.8)  // 솟아난 뒤 0.8초 숨 고르기
+        runStage(duration: 1.4) { [weak self] t in
+            guard let self else { return }
+            let h = self.bounds.height
+            if t < 0.45 {        // 싹이 돋아 자람(살짝 넘쳤다 자리잡기)
+                let k = t / 0.45
+                self.sproutScale = min(1.08, k * 1.2) - max(0, k - 0.85) * 0.5
+                self.stageOffset = -h
+                self.stageAlpha = 0
+            } else if t < 0.8 {  // 감자가 솟아오름(감속), 싹은 감자 뒤로 사라짐
+                let k = (t - 0.45) / 0.35
+                self.sproutScale = max(0, 1 - k * 1.5)
+                self.stageOffset = -h * pow(1 - k, 2) + 6 * k
+                self.stageAlpha = min(1, k * 3)
+            } else {             // 6pt 위에서 제자리로 튕겨 내려앉기
+                let k = (t - 0.8) / 0.2
+                self.sproutScale = 0
+                self.stageOffset = 6 * cos(k * .pi / 2)
+                self.stageAlpha = 1
+            }
+        }
+    }
+
+    func playExit(completion: (() -> Void)? = nil) {
+        holdPositionUntil = .distantFuture  // 땅속으로 들어가는 자리에서 움직이지 않음
+        runStage(duration: 1.4, completion: completion) { [weak self] t in
+            guard let self else { return }
+            let h = self.bounds.height
+            if t < 0.2 {         // 살짝 뛰기
+                self.stageOffset = 8 * sin(t / 0.2 * .pi)
+            } else if t < 0.55 { // 땅속으로(가속)
+                let k = (t - 0.2) / 0.35
+                self.stageOffset = -h * k * k
+            } else {
+                self.stageOffset = -h
+            }
+            self.stageAlpha = t < 0.35 ? 1 : max(0, 1 - (t - 0.35) / 0.2)
+            if t >= 0.5 {        // 그 자리에 싹이 돋았다가 시듦
+                let k = (t - 0.5) / 0.5
+                self.sproutScale = k < 0.4 ? k / 0.4 : max(0, 1 - (k - 0.4) / 0.6)
+            } else {
+                self.sproutScale = 0
+            }
+        }
+    }
+
+    /// 땅(baseY)에서 돋은 싹: 줄기 하나와 잎 두 장. scale 0~1.
+    private func drawSprout(_ context: CGContext, centerX: CGFloat, groundY: CGFloat, scale: CGFloat) {
+        guard scale > 0.01 else { return }
+        context.saveGState()
+        context.translateBy(x: centerX, y: groundY)
+        context.scaleBy(x: scale, y: scale)
+        let green = NSColor(calibratedRed: 0.36, green: 0.72, blue: 0.33, alpha: 1).cgColor
+        let dark = NSColor(calibratedRed: 0.24, green: 0.55, blue: 0.24, alpha: 1).cgColor
+        // 흙 둔덕
+        context.setFillColor(NSColor(calibratedRed: 0.45, green: 0.32, blue: 0.2, alpha: 1).cgColor)
+        context.fillEllipse(in: CGRect(x: -10, y: -3, width: 20, height: 6))
+        // 줄기
+        context.setStrokeColor(dark)
+        context.setLineWidth(2)
+        context.setLineCap(.round)
+        context.move(to: CGPoint(x: 0, y: 1))
+        context.addQuadCurve(to: CGPoint(x: 0, y: 14), control: CGPoint(x: 2, y: 7))
+        context.strokePath()
+        // 잎 두 장
+        context.setFillColor(green)
+        for dir in [-1.0, 1.0] as [CGFloat] {
+            let leaf = CGMutablePath()
+            leaf.move(to: CGPoint(x: 0, y: 13))
+            leaf.addQuadCurve(to: CGPoint(x: dir * 10, y: 18), control: CGPoint(x: dir * 3, y: 21))
+            leaf.addQuadCurve(to: CGPoint(x: 0, y: 13), control: CGPoint(x: dir * 7, y: 11))
+            context.addPath(leaf)
+            context.fillPath()
+        }
+        context.restoreGState()
+    }
+
+    private func runStage(duration: TimeInterval, completion: (() -> Void)? = nil, step: @escaping (CGFloat) -> Void) {
+        stageTimer?.invalidate()
+        let start = Date()
+        step(0)
+        needsDisplay = true
+        stageTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60, repeats: true) { [weak self] timer in
+            guard let self else { timer.invalidate(); return }
+            let t = min(1, CGFloat(Date().timeIntervalSince(start) / duration))
+            step(t)
+            self.needsDisplay = true
+            if t >= 1 {
+                timer.invalidate()
+                self.stageTimer = nil
+                completion?()
+            }
+        }
+    }
     private var animationTimer: Timer?
     private var behaviorTimer: Timer?
     private var stateTimer: Timer?
@@ -305,6 +413,11 @@ class PetView: NSView {
 
         // 1·2pt 번갈아 걷기 (평균 1.5 = speed). macOS 가 창 위치를 정수로 내림해서 1.5씩 움직이면
         // 오른쪽은 1pt, 왼쪽은 2pt 씩 가 펫이 왼쪽으로 쏠렸다 — 정수로만 움직이면 내림 영향이 없다.
+        if stageTimer != nil || Date() < holdPositionUntil {  // 등장·퇴장 중에는 걷지 않는다
+            if state == .walkingLeft || state == .walkingRight { state = .idle }
+            needsDisplay = true
+            return
+        }
         var step: CGFloat = animationFrame % 2 == 0 ? 1 : 2
         // 모여 있기: 자기 자리로 걸어가서(멀면 뛰어서) 멈춘다. 도착한 뒤의 점프·기뻐하기 같은 반응은 그대로 둔다.
         if let distance = homeDistance?() {
@@ -333,6 +446,11 @@ class PetView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         guard let context = NSGraphicsContext.current?.cgContext else { return }
         context.clear(bounds)
+        // 등장·퇴장 장면(평소에는 싹 없음·위치 0·불투명이라 영향 없음)
+        drawSprout(context, centerX: bounds.midX, groundY: 4, scale: sproutScale)
+        if stageAlpha <= 0.01 { return }
+        context.translateBy(x: 0, y: stageOffset)
+        context.setAlpha(stageAlpha)
 
         let centerX = bounds.midX
         let baseY: CGFloat = 4

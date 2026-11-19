@@ -27,6 +27,9 @@ struct SessionInfo: Equatable {
 
 class ClaudeMonitor {
     private let staleTimeout: Int = 7200 // 2시간 이상 업데이트 없으면 정리
+    // 쉬는 세션은 마지막 활동 15분 뒤 화면에서 뺀다(파일은 두므로 다시 일하면 감자가 돌아온다).
+    // 데스크톱 앱은 사이드바에 열린 세션마다 claude 프로세스를 살려 둬서, 이게 없으면 쉬는 감자가 수십 마리 쌓였다(2026-11-19 실측 22마리).
+    private let idleHideAfter: Int = 15 * 60
 
     func isDesktopRunning() -> Bool {
         return NSWorkspace.shared.runningApplications.contains {
@@ -81,6 +84,9 @@ class ClaudeMonitor {
                 status = .idle
             }
 
+            // 시작만 하고 요청을 받은 적 없는 세션(자동·백그라운드 세션 포함)은 감자를 띄우지 않는다.
+            if event == "SessionStart" { continue }
+            if status == .idle && now - ts > idleHideAfter { continue }
             sessions.append(SessionInfo(
                 sessionId: sessionId,
                 status: status,
