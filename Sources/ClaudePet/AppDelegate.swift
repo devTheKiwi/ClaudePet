@@ -15,6 +15,14 @@ struct PetSession {
     var info: SessionInfo? = nil   // 훅이 남긴 최신 값 (더블클릭으로 세션 창 찾기)
 }
 
+/// 쉬느라 숨은 감자 (쉬는 펫 숨기기). 그 세션이 다시 일하면 색·작업시간·모여 있기 순서를 이어 쓴다
+struct RestingPet {
+    let colorIndex: Int
+    let sessionStart: Date
+    let workingSeconds: Int
+    let creditedMinutes: Int
+}
+
 // MARK: - Time Tracker
 
 class TimeTracker {
@@ -67,6 +75,7 @@ class TimeTracker {
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     var sessions: [String: PetSession] = [:]
+    var restingPets: [String: RestingPet] = [:]   // 상태 파일이 없어지면(세션 끝) 잊는다
     var claudeMonitor: ClaudeMonitor!
     var statusItem: NSStatusItem!
     var randomSpeechTimer: Timer?
@@ -290,7 +299,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return NSMenuItem(title: "\(todayLabel): \(TokenUsage.formatTokens(todayUsage.totalTokens)) (cache \(cacheRate)%)", action: nil, keyEquivalent: "")
     }
 
-    /// 작업시간 표시 · 스킨 · 언어 · 펫 배치
+    /// 작업시간 표시 · 스킨 · 언어 · 펫 배치 · 쉬는 펫 숨기기
     private func settingsMenuItems() -> [NSMenuItem] {
         let timerToggle = NSMenuItem(title: L10n.menuWorkTime, action: #selector(toggleTimer), keyEquivalent: "")
         timerToggle.target = self
@@ -333,7 +342,32 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let langItem = NSMenuItem(title: L10n.menuLanguage, action: nil, keyEquivalent: "")
         langItem.submenu = langMenu
 
-        return [timerToggle, skinItem, langItem, placementMenuItem()]
+        return [timerToggle, skinItem, langItem, placementMenuItem(), idleHideMenuItem()]
+    }
+
+    // MARK: - Idle Hide
+
+    /// "쉬는 펫 숨기기": 쉬는 세션 감자를 몇 분 뒤 화면에서 뺄지. 상태 파일은 두므로 다시 일하면 돌아온다
+    private func idleHideMenuItem() -> NSMenuItem {
+        let menu = NSMenu()
+        let current = ClaudeMonitor.idleHideMinutes
+        for minutes in ClaudeMonitor.idleHideOptions {
+            let title = L10n.idleHideOption(minutes, isDefault: minutes == ClaudeMonitor.defaultIdleHideMinutes)
+            let item = NSMenuItem(title: title, action: #selector(changeIdleHide(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = minutes
+            item.state = current == minutes ? .on : .off
+            menu.addItem(item)
+        }
+        let item = NSMenuItem(title: L10n.menuIdleHide, action: nil, keyEquivalent: "")
+        item.submenu = menu
+        return item
+    }
+
+    @objc private func changeIdleHide(_ sender: NSMenuItem) {
+        guard let minutes = sender.representedObject as? Int else { return }
+        ClaudeMonitor.idleHideMinutes = minutes
+        syncSessions()   // 다음 확인(2초)을 기다리지 않고 바로 숨기거나 다시 꺼낸다
     }
 
     // MARK: - Pet Placement
@@ -564,6 +598,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 showSpeech(L10n.bye, for: session)
                 let petWin = session.petWindow
                 let bubbleWin = session.speechBubble
+                // 쉬느라 숨는 거면 다시 나올 때 색·작업시간을 이어 쓴다 (세션이 끝난 거면 바로 아래에서 잊는다)
+                restingPets[id] = RestingPet(colorIndex: session.colorIndex, sessionStart: session.sessionStart,
+                                             workingSeconds: session.workingSeconds, creditedMinutes: session.creditedMinutes)
                 sessions.removeValue(forKey: id)
                 // 인사 말풍선을 잠깐 보인 뒤 땅속으로 들어가고, 다 들어가면 창을 닫는다.
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
@@ -572,6 +609,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
         }
+        // 상태 파일이 없어진 세션(끝났거나 2시간 지나 정리됨)은 잊는다
+        restingPets = restingPets.filter { claudeMonitor.sessionsOnDisk.contains($0.key) }
 
         // 새로운 세션 추가 / 기존 세션 업데이트
         for info in liveInfos {
@@ -741,10 +780,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Spawn / Remove
 
     private func spawnPet(for info: SessionInfo) {
-        // 사용 중인 색상 제외하고 랜덤 선택
+        // 쉬느라 숨었던 감자면 원래 색을 다시 쓴다 (그새 다른 감자가 그 색을 쓰고 있으면 새로 고른다).
+        // 새로 고를 땐 사용 중인 색, 되도록 숨은 감자 색도 빼고 랜덤
+        let resting = restingPets.removeValue(forKey: info.sessionId)
         let usedColors = Set(sessions.values.map { $0.colorIndex })
-        let available = (1..<PetColor.palette.count).filter { !usedColors.contains($0) }
-        let colorIndex = available.randomElement() ?? Int.random(in: 1..<PetColor.palette.count)
+        let restingColors = Set(restingPets.values.map { $0.colorIndex })
+        let allColors = Array(1..<PetColor.palette.count)
+        let colorIndex: Int
+        if let resting, !usedColors.contains(resting.colorIndex) {
+            colorIndex = resting.colorIndex
+        } else {
+            colorIndex = allColors.filter { !usedColors.contains($0) && !restingColors.contains($0) }.randomElement()
+                ?? allColors.filter { !usedColors.contains($0) }.randomElement()
+                ?? Int.random(in: 1..<PetColor.palette.count)
+        }
 
         let color = PetColor.palette[colorIndex]
         // 새 감자는 메인 감자(데스크톱 펫, 없으면 기본 펫) 바로 옆 땅에서 태어난다. 메인이 기뻐 뛰고,
@@ -765,7 +814,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         setupClickHandlers(for: info.sessionId, petWindow: petWindow)
         petWindow.petView.claudeStatus = info.status
 
-        let session = PetSession(
+        var session = PetSession(
             petWindow: petWindow,
             speechBubble: speechBubble,
             colorIndex: colorIndex,
@@ -773,6 +822,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             cwd: info.cwd,
             info: info
         )
+        if let resting {
+            // 작업시간 뱃지·오늘 적립한 분·모여 있기 순서를 숨기 전 그대로 이어 간다
+            session.sessionStart = resting.sessionStart
+            session.workingSeconds = resting.workingSeconds
+            session.creditedMinutes = resting.creditedMinutes
+            petWindow.petView.workingSeconds = resting.workingSeconds
+            petWindow.petView.showTimer = showTimerEnabled
+        }
         sessions[info.sessionId] = session
 
         let dir = (info.cwd as NSString).lastPathComponent

@@ -220,6 +220,22 @@ struct L10n {
     static var menuHoverFade: String { isKorean ? "가까이 가면 투명해지기 (⌥ 누르고 클릭)" : "Fade when the cursor is near (⌥-click)" }
     static var menuGather: String { isKorean ? "세션 많으면 구석에 모여 있기 (3마리 이상)" : "Gather in a corner (3+ pets)" }
 
+    // MARK: - 쉬는 펫 숨기기
+
+    static var menuIdleHide: String { isKorean ? "쉬는 펫 숨기기" : "Hide idle pets" }
+    /// 15 → "15분", 60 → "1시간", 기본값엔 "(기본)"
+    static func idleHideOption(_ minutes: Int, isDefault: Bool) -> String {
+        let text: String
+        if minutes % 60 == 0 {
+            let hours = minutes / 60
+            text = isKorean ? "\(hours)시간" : "\(hours) hour\(hours == 1 ? "" : "s")"
+        } else {
+            text = isKorean ? "\(minutes)분" : "\(minutes) min"
+        }
+        guard isDefault else { return text }
+        return isKorean ? "\(text) (기본)" : "\(text) (default)"
+    }
+
     // MARK: - 세션 창으로 가기 (더블클릭)
 
     static var menuJump: String { isKorean ? "이 세션 창으로 가기 (더블클릭)" : "Go to this session (double-click)" }
