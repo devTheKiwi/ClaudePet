@@ -65,4 +65,12 @@ fi
 # 상태 파일 정리
 rm -f /tmp/claudepet-*.json 2>/dev/null && echo "  상태 파일 정리" || true
 
+# 내보낸 상태 파일 삭제 (폴더는 다른 프로그램이 쓸 수 있으니 비어 있을 때만 지움)
+STATE_DIR="$HOME/.claudepet"
+if [ -e "$STATE_DIR/state.json" ] || [ -e "$STATE_DIR/state.json.tmp" ]; then
+    rm -f "$STATE_DIR/state.json" "$STATE_DIR/state.json.tmp"
+    echo "  $STATE_DIR/state.json 삭제"
+fi
+rmdir "$STATE_DIR" 2>/dev/null || true
+
 echo -e "${GREEN}ClaudePet이 완전히 제거되었습니다!${NC}"

@@ -83,6 +83,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     let timeTracker = TimeTracker()
     let updateChecker = UpdateChecker()
     let tokenTracker = TokenTracker()
+    let stateExport = StateExport()
     var showTimerEnabled: Bool = true
     var desktopWasRunning: Bool = false
     var desktopStartTime: Date?
@@ -671,6 +672,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         updateGatherHomes()
 
         rebuildStatusMenu()
+
+        // 펫과 같은 세션 상태를 ~/.claudepet/state.json 으로 내보낸다 (쓰기는 백그라운드, 실패해도 무시)
+        stateExport.update(
+            pets: sessions.map { StateExport.Pet(id: $0.key, status: $0.value.lastStatus, info: $0.value.info) },
+            todayMinutes: timeTracker.todayTotalMinutes()
+        )
     }
 
     private func checkTokenMilestones() {

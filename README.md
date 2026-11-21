@@ -33,6 +33,8 @@ pkill -f ClaudePet
 rm -rf ~/Applications/ClaudePet.app
 rm -f ~/.claude/hooks/claudepet-hook.sh
 rm -f ~/Library/LaunchAgents/com.claudepet.app.plist
+rm -f ~/.claudepet/state.json ~/.claudepet/state.json.tmp
+rmdir ~/.claudepet 2>/dev/null   # 비어 있을 때만 지워져요
 ```
 
 ---
@@ -92,6 +94,39 @@ rmdir /s "%USERPROFILE%\.claudepet-windows"
 - **세션 창으로 가기 (macOS)** — 펫을 더블클릭하면 그 세션이 열린 Orca·터미널·iTerm2 탭이나 Claude Desktop 세션으로 이동
 - **자동 업데이트 알림** — 새 버전 나오면 말풍선 + 아이콘 배지 🎉로 알려줌
 - **PC 시작 시 자동 실행**
+- **상태 파일 내보내기 (macOS)** — 펫과 같은 세션 상태를 `~/.claudepet/state.json`에 써서 위젯·장비 같은 다른 프로그램이 읽을 수 있어요 ([형식](#-상태-파일-macos))
+
+## 📄 상태 파일 (macOS)
+
+ClaudePet이 화면의 펫과 같은 세션 상태를 `~/.claudepet/state.json`에 써 둡니다. 다른 프로그램은 이 파일만 읽으면 돼요.
+
+```json
+{
+  "version": 1,
+  "updated_at": 1763540000,
+  "today_minutes": 312,
+  "sessions": [
+    { "id": "0b5e…", "status": "working", "project": "my-app", "tool": "Bash", "updated_at": 1763539990 },
+    { "id": "41e9…", "status": "waiting_permission", "project": "web", "tool": "Edit", "updated_at": 1763539950 }
+  ]
+}
+```
+
+| 값 | 뜻 |
+|---|---|
+| `version` | 형식 버전 (지금은 `1`) |
+| `updated_at` | 파일을 쓴 시각 (유닉스 초) |
+| `today_minutes` | 오늘 작업시간 (분, 메뉴의 "오늘 작업"과 같은 값) |
+| `sessions[].id` | Claude Code 세션 ID |
+| `sessions[].status` | `working` · `waiting_permission` · `idle` |
+| `sessions[].project` | 작업 폴더 이름 (전체 경로는 넣지 않아요) |
+| `sessions[].tool` | 마지막으로 쓴 도구 이름, 없으면 `""` |
+| `sessions[].updated_at` | 그 세션의 마지막 훅 이벤트 시각 (유닉스 초) |
+
+- **들어가는 세션**: 화면에 펫이 있는 Claude Code 세션만 들어가요. 기본 펫, Desktop 펫, 숨은(오래 쉰) 세션, 시작만 하고 요청이 없던 세션은 빠져요. 세션이 없으면 `sessions`는 빈 배열이에요.
+- **갱신 주기**: 내용이 바뀌면 2초 안에, 바뀌지 않아도 10초마다 다시 써요.
+- **오래된 파일**: ClaudePet이 꺼지면 파일은 마지막 상태로 남아요. `updated_at`이 30초 넘게 지났으면 앱이 꺼진 것으로 보면 돼요.
+- 임시 파일에 쓴 뒤 이름을 바꾸기 때문에 반쯤 쓴 파일을 읽을 일은 없어요. 파일은 본인만 읽을 수 있게(`600`) 만들어져요.
 
 ## License
 
