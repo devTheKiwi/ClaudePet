@@ -175,14 +175,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupStatusBar() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
-            button.title = "🐛"
+            // 번들에 펫 모양 아이콘이 있으면 그걸 쓰고, 없으면(swift run 등) 예전처럼 🐛
+            if let icon = Bundle.main.image(forResource: "MenuBarIcon") {
+                icon.isTemplate = true   // 밝은·어두운 메뉴바에 맞춰 시스템이 색을 입힌다
+                button.image = icon
+                button.imagePosition = .imageLeading
+            } else {
+                button.title = "🐛"
+            }
         }
         rebuildStatusMenu()
     }
 
     private func rebuildStatusMenu() {
         // 메뉴바 아이콘 배지: 업데이트 있으면 🎉 (메뉴 안 열어도 항상 보임)
-        statusItem.button?.title = updateChecker.updateAvailable ? "🐛🎉" : "🐛"
+        let bug = statusItem.button?.image == nil ? "🐛" : ""
+        statusItem.button?.title = bug + (updateChecker.updateAvailable ? "🎉" : "")
 
         let menu = NSMenu()
         menu.addItem(NSMenuItem(title: "Claude Pet v\(updateChecker.currentVersion)", action: nil, keyEquivalent: ""))

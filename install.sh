@@ -82,6 +82,9 @@ mkdir -p "$APP_BUNDLE/Contents/Resources"
 # Binary 복사
 cp "$BINARY" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 
+# 아이콘 (앱 아이콘 + 메뉴바 아이콘). 없어도 설치는 계속한다
+cp Resources/AppIcon.icns Resources/MenuBarIcon.png "Resources/MenuBarIcon@2x.png" "$APP_BUNDLE/Contents/Resources/" 2>/dev/null || true
+
 # 버전: git 태그에서 자동 추출 (설치본 버전을 GitHub 최신 릴리스와 일치 → '업데이트' 무한알림 방지)
 APP_VERSION=$(git tag -l 'v*' 2>/dev/null | sort -V | tail -1 | sed 's/^v//')
 [ -z "$APP_VERSION" ] && APP_VERSION=$(git ls-remote --tags origin 2>/dev/null | sed -n 's#.*refs/tags/v\([0-9][0-9.]*\)$#\1#p' | sort -V | tail -1)
@@ -99,6 +102,8 @@ cat > "$APP_BUNDLE/Contents/Info.plist" << PLIST
     <string>com.claudepet.app</string>
     <key>CFBundleName</key>
     <string>ClaudePet</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundleVersion</key>
     <string>${APP_VERSION}</string>
     <key>CFBundleShortVersionString</key>

@@ -109,6 +109,9 @@ mkdir -p "$APP_BUNDLE/Contents/MacOS"
 mkdir -p "$APP_BUNDLE/Contents/Resources"
 cp "$BINARY" "$APP_BUNDLE/Contents/MacOS/ClaudePet"
 
+# 아이콘 (앱 아이콘 + 메뉴바 아이콘). 없어도 설치는 계속한다
+cp Resources/AppIcon.icns Resources/MenuBarIcon.png "Resources/MenuBarIcon@2x.png" "$APP_BUNDLE/Contents/Resources/" 2>/dev/null || true
+
 cat > "$APP_BUNDLE/Contents/Info.plist" << PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -120,6 +123,8 @@ cat > "$APP_BUNDLE/Contents/Info.plist" << PLIST
     <string>com.claudepet.app</string>
     <key>CFBundleName</key>
     <string>ClaudePet</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundleVersion</key>
     <string>${APP_VERSION}</string>
     <key>CFBundleShortVersionString</key>
