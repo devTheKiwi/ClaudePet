@@ -9,7 +9,7 @@ import Cocoa
 //   /tmp/make-icons /tmp/icons
 // 나오는 것: icon-<시안>-1024.png (앱 아이콘 시안 A·B·C), menubar-<시안>-18[@2x].png (메뉴바 시안 M1·M2·M3),
 //           preview.png · preview-menubar.png (비교용)
-// Resources/ 에 든 것은 C(크림)와 M1(단색)이다.
+// Resources/ 에 든 것은 B(남색·큰 펫)와 M1(단색)이다.
 //
 // 1024 PNG → .icns:
 //   mkdir AppIcon.iconset
