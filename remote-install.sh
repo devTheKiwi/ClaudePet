@@ -180,7 +180,7 @@ echo -e "${GREEN}  ClaudePet 설치 완료!${NC}"
 echo -e "${GREEN}============================================${NC}"
 echo ""
 echo "  실행: open ~/Applications/ClaudePet.app"
-echo "  종료: 메뉴바 🐛 > 종료"
+echo "  종료: 메뉴바 펫 아이콘 > 종료"
 echo "  PC 시작 시 자동 실행됩니다!"
 echo ""
 

@@ -275,7 +275,7 @@ echo ""
 echo "  또는 터미널에서:"
 echo "    $APP_BUNDLE/Contents/MacOS/ClaudePet"
 echo ""
-echo "  종료: 메뉴바의 🐛 아이콘 > 종료"
+echo "  종료: 메뉴바의 펫 아이콘 > 종료"
 echo ""
 
 # ---- 언어 선택 ----
