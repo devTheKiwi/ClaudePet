@@ -218,6 +218,7 @@ struct L10n {
     static var screenDock: String { isKorean ? "Dock 있는 화면 (자동)" : "Screen with the Dock (auto)" }
     static var screenFollow: String { isKorean ? "지금 작업 중인 화면 따라가기" : "Follow the active screen" }
     static var menuHoverFade: String { isKorean ? "가까이 가면 투명해지기 (⌥ 누르고 클릭)" : "Fade when the cursor is near (⌥-click)" }
+    static var menuCaretFade: String { isKorean ? "글 쓰는 자리에서 투명해지기 (손쉬운 사용 권한 필요)" : "Fade over the text being typed (needs Accessibility)" }
     static var menuGather: String { isKorean ? "세션 많으면 구석에 모여 있기 (3마리 이상)" : "Gather in a corner (3+ pets)" }
 
     // MARK: - 쉬는 펫 숨기기

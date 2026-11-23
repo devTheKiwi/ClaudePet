@@ -17,6 +17,12 @@ enum PetPlacement {
         set { defaults.set(newValue, forKey: "claudepet_hover_fade") }
     }
 
+    /// 글자 커서(입력 위치)가 있는 줄을 펫이 가리면 반투명 (손쉬운 사용 권한 필요, 없으면 아무 일도 없음. CaretLocator)
+    static var caretFade: Bool {
+        get { defaults.bool(forKey: "claudepet_caret_fade") }
+        set { defaults.set(newValue, forKey: "claudepet_caret_fade") }
+    }
+
     /// 펫이 gatherMinimum 마리 이상이면 화면 오른쪽 아래 구석에 줄지어 모여 있기
     static var gather: Bool {
         get { defaults.bool(forKey: "claudepet_gather") }
